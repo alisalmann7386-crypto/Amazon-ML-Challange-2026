@@ -6,3 +6,5 @@
 - [Architecture and usage](../../README.md)
 
 The architecture reflects the actual implemented baseline. Planned neural stages are explicitly separated from implemented code.
+
+- [Colab and disk-backed baseline](../../COLAB.md)

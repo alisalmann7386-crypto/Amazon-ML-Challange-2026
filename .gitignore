@@ -12,3 +12,9 @@ demo_data/
 *.zip
 student_resource/dataset/train/
 student_resource/dataset/test/
+
+dataset/
+*.sqlite
+*.sqlite.*
+*.db
+*.npz

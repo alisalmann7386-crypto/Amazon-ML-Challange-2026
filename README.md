@@ -1,5 +1,20 @@
 # Amazon-ML-Challange-2026
 
+## Train in Google Colab
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alisalmann7386-crypto/Amazon-ML-Challange-2026/blob/main/notebooks/Colab_Baseline.ipynb)
+
+**For the 2.2-million-S1 dataset, start with [the Colab notebook](notebooks/Colab_Baseline.ipynb) and [large-data instructions](COLAB.md).** The new disk-backed workflow uses SQLite token BM25 retrieval and incremental logistic training, with 20,000 sampled S1 entities by default and the full S2/S3 search catalog. It reports an independent group holdout score and saves the model to Drive. It needs no GPU.
+
+| Entry point | Use |
+| --- | --- |
+| `src/scalable.py` | Large catalog, disk index, feature shards, sampled training, streamed predictions |
+| `src/prepare_data.py` | Prepare canonical TSVs from Drive folders or ZIPs |
+| `notebooks/Colab_Baseline.ipynb` | Clone, install, prepare, train, save, predict and package |
+| `src/pipeline.py` | Original in-memory character TF-IDF baseline for small experiments |
+
+The remaining quick-start and architecture below describe the original TF-IDF baseline. **Do not launch its in-memory training command on the full competition data.** Neural retrieval and reranking remain planned experiments. Both workflows have synthetic local tests; neither has a measured official-data score yet.
+
 ## Business Entity Resolution Toolkit
 
 Match each **Source 1 business** to **zero, one, or many records in Sources 2 and 3** despite noisy names and addresses. A reproducible competition workspace with a working offline baseline, grouped validation, data analysis, strict TSV checks, and final submission packaging.
