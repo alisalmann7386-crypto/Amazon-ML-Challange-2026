@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.env
+.env.*
+artifacts/
+output/
+demo_data/
+*.joblib
+*.pkl
+*.zip
+student_resource/dataset/train/
+student_resource/dataset/test/
