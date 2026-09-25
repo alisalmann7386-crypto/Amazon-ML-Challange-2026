@@ -21,7 +21,6 @@ Create a folder `MyDrive/AmazonML2026/input/train` containing exactly one copy o
 
 TSVs may be nested in ZIP folders. Windows duplicate names such as `train_source3(1).tsv` are accepted and renamed when copied. Do not place both a ZIP and an extracted copy in the input folder. The notebook deliberately rejects ambiguous duplicates. Later put the three test files in `input/test`.
 
-A ChatGPT upload is not automatically available to Colab. Put the original files or ZIPs in your Drive and update the notebook's `DRIVE_ROOT` if needed. Competition data is not pushed into the public repository.
 
 ## Run cells in order
 
