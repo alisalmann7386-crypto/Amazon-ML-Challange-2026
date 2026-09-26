@@ -1,0 +1,1006 @@
+{
+  "train_source1.tsv": {
+    "rows": 2206821,
+    "scope": "all rows",
+    "duplicate_ids": 0,
+    "countries": {
+      "US": 1323633,
+      "India": 883188
+    },
+    "scripts": {
+      "LATIN": 2206821
+    },
+    "counts": {
+      "missing_business_name": 0,
+      "missing_business_address": 0,
+      "missing_country": 0,
+      "non_ascii": 554,
+      "accented_latin": 554,
+      "indic": 0,
+      "devanagari": 0,
+      "mixed_script": 0,
+      "numeric_token": 2082053,
+      "likely_postal": 147353
+    },
+    "percentages": {
+      "missing_business_name": 0.0,
+      "missing_business_address": 0.0,
+      "missing_country": 0.0,
+      "non_ascii": 0.0251039844192166,
+      "accented_latin": 0.0251039844192166,
+      "indic": 0.0,
+      "devanagari": 0.0,
+      "mixed_script": 0.0,
+      "numeric_token": 94.34625644762308,
+      "likely_postal": 6.677161400947336
+    },
+    "distributions": {
+      "name_length": {
+        "count": 2206821,
+        "min": 3,
+        "max": 105,
+        "mean": 24.03440333402664,
+        "median": 24,
+        "p95": 37
+      },
+      "address_length": {
+        "count": 2206821,
+        "min": 11,
+        "max": 256,
+        "mean": 52.06621289175697,
+        "median": 41,
+        "p95": 103
+      },
+      "name_tokens": {
+        "count": 2206821,
+        "min": 1,
+        "max": 19,
+        "mean": 3.624692714089634,
+        "median": 4,
+        "p95": 5
+      },
+      "address_tokens": {
+        "count": 2206821,
+        "min": 2,
+        "max": 46,
+        "mean": 8.51239361960032,
+        "median": 7,
+        "p95": 17
+      }
+    },
+    "unique": {
+      "name": 1539229,
+      "normalized_name": 1505759,
+      "address": 2130606
+    },
+    "common_tokens": [
+      [
+        "limited",
+        672191
+      ],
+      [
+        "private",
+        555080
+      ],
+      [
+        "road",
+        489492
+      ],
+      [
+        "no",
+        447618
+      ],
+      [
+        "llc",
+        355745
+      ],
+      [
+        "delhi",
+        330899
+      ],
+      [
+        "street",
+        313332
+      ],
+      [
+        "incorporated",
+        238472
+      ],
+      [
+        "drive",
+        223040
+      ],
+      [
+        "unit",
+        208370
+      ],
+      [
+        "and",
+        196872
+      ],
+      [
+        "avenue",
+        193979
+      ],
+      [
+        "maharashtra",
+        192492
+      ],
+      [
+        "nagar",
+        167653
+      ],
+      [
+        "floor",
+        163225
+      ],
+      [
+        "c",
+        159915
+      ],
+      [
+        "city",
+        158917
+      ],
+      [
+        "1",
+        142429
+      ],
+      [
+        "west",
+        138851
+      ],
+      [
+        "mumbai",
+        133777
+      ],
+      [
+        "tx",
+        133315
+      ],
+      [
+        "new",
+        127720
+      ],
+      [
+        "s",
+        116545
+      ],
+      [
+        "pradesh",
+        116386
+      ],
+      [
+        "lane",
+        111193
+      ],
+      [
+        "a",
+        108475
+      ],
+      [
+        "ny",
+        102481
+      ],
+      [
+        "2",
+        100375
+      ],
+      [
+        "nc",
+        94955
+      ],
+      [
+        "b",
+        92301
+      ]
+    ],
+    "rare_tokens": [
+      [
+        "00000",
+        1
+      ],
+      [
+        "0000000000000000000000",
+        1
+      ],
+      [
+        "0000000305",
+        1
+      ],
+      [
+        "000000dsk",
+        1
+      ],
+      [
+        "00000134",
+        1
+      ],
+      [
+        "000001a",
+        1
+      ],
+      [
+        "00000ganga",
+        1
+      ],
+      [
+        "00000nr",
+        1
+      ],
+      [
+        "00000vadrdhaman",
+        1
+      ],
+      [
+        "00001",
+        1
+      ],
+      [
+        "00003",
+        1
+      ],
+      [
+        "00008",
+        1
+      ],
+      [
+        "00009",
+        1
+      ],
+      [
+        "0000bld",
+        1
+      ],
+      [
+        "0000bt",
+        1
+      ],
+      [
+        "0000nyati",
+        1
+      ],
+      [
+        "0000pl",
+        1
+      ],
+      [
+        "0000sn",
+        1
+      ],
+      [
+        "00014",
+        1
+      ],
+      [
+        "00022",
+        1
+      ],
+      [
+        "00029",
+        1
+      ],
+      [
+        "00037",
+        1
+      ],
+      [
+        "00039",
+        1
+      ],
+      [
+        "00041",
+        1
+      ],
+      [
+        "00044",
+        1
+      ],
+      [
+        "00047",
+        1
+      ],
+      [
+        "00048",
+        1
+      ],
+      [
+        "00056",
+        1
+      ],
+      [
+        "00058",
+        1
+      ],
+      [
+        "00059",
+        1
+      ]
+    ]
+  },
+  "train_source2.tsv": {
+    "rows": 5034616,
+    "scope": "all rows",
+    "duplicate_ids": 0,
+    "countries": {
+      "India": 2017799,
+      "US": 3016817
+    },
+    "scripts": {
+      "DEVANAGARI+LATIN": 479500,
+      "LATIN": 4198377,
+      "LATIN+TAMIL": 60220,
+      "GUJARATI+LATIN": 54763,
+      "BENGALI+LATIN": 54757,
+      "KANNADA+LATIN": 66637,
+      "LATIN+TELUGU": 65393,
+      "LATIN+MALAYALAM": 30640,
+      "LATIN+OTHER": 12207,
+      "GURMUKHI+LATIN": 12114,
+      "NONE": 8
+    },
+    "counts": {
+      "missing_business_name": 0,
+      "missing_business_address": 168967,
+      "missing_country": 0,
+      "non_ascii": 1106720,
+      "accented_latin": 291422,
+      "indic": 824024,
+      "devanagari": 479500,
+      "mixed_script": 836231,
+      "numeric_token": 4423261,
+      "likely_postal": 395475
+    },
+    "percentages": {
+      "missing_business_name": 0.0,
+      "missing_business_address": 3.3561050137686768,
+      "missing_country": 0.0,
+      "non_ascii": 21.982212744725715,
+      "accented_latin": 5.788365984615312,
+      "indic": 16.3671668305984,
+      "devanagari": 9.524063006990007,
+      "mixed_script": 16.609628221894184,
+      "numeric_token": 87.85696863474791,
+      "likely_postal": 7.855117450864177
+    },
+    "distributions": {
+      "name_length": {
+        "count": 5034616,
+        "min": 2,
+        "max": 104,
+        "mean": 25.103574930044317,
+        "median": 25,
+        "p95": 40
+      },
+      "address_length": {
+        "count": 5034616,
+        "min": 0,
+        "max": 249,
+        "mean": 46.22590858965212,
+        "median": 37,
+        "p95": 96
+      },
+      "name_tokens": {
+        "count": 5034616,
+        "min": 1,
+        "max": 18,
+        "mean": 3.653374755890022,
+        "median": 4,
+        "p95": 6
+      },
+      "address_tokens": {
+        "count": 5034616,
+        "min": 0,
+        "max": 46,
+        "mean": 7.803799932308641,
+        "median": 6,
+        "p95": 16
+      }
+    },
+    "unique": {
+      "name": 4402009,
+      "normalized_name": 3975247,
+      "address": 4337261
+    },
+    "common_tokens": [
+      [
+        "no",
+        1121879
+      ],
+      [
+        "road",
+        1015894
+      ],
+      [
+        "limited",
+        935974
+      ],
+      [
+        "private",
+        724900
+      ],
+      [
+        "llc",
+        532396
+      ],
+      [
+        "delhi",
+        508614
+      ],
+      [
+        "incorporated",
+        433322
+      ],
+      [
+        "avenue",
+        419689
+      ],
+      [
+        "and",
+        386509
+      ],
+      [
+        "c",
+        380827
+      ],
+      [
+        "street",
+        344928
+      ],
+      [
+        "st",
+        339548
+      ],
+      [
+        "floor",
+        320868
+      ],
+      [
+        "maharashtra",
+        320467
+      ],
+      [
+        "city",
+        316878
+      ],
+      [
+        "dr",
+        309515
+      ],
+      [
+        "nagar",
+        305718
+      ],
+      [
+        "1",
+        305289
+      ],
+      [
+        "a",
+        302034
+      ],
+      [
+        "tx",
+        292545
+      ],
+      [
+        "s",
+        264731
+      ],
+      [
+        "2",
+        244344
+      ],
+      [
+        "new",
+        239065
+      ],
+      [
+        "lane",
+        237711
+      ],
+      [
+        "ny",
+        225590
+      ],
+      [
+        "west",
+        222961
+      ],
+      [
+        "drive",
+        218664
+      ],
+      [
+        "pradesh",
+        218374
+      ],
+      [
+        "center",
+        214723
+      ],
+      [
+        "corporation",
+        211420
+      ]
+    ],
+    "rare_tokens": [
+      [
+        "00000",
+        1
+      ],
+      [
+        "0000000305",
+        1
+      ],
+      [
+        "000000305",
+        1
+      ],
+      [
+        "00000134",
+        1
+      ],
+      [
+        "00000ganga",
+        1
+      ],
+      [
+        "00000sn",
+        1
+      ],
+      [
+        "00000vbdrdhaman",
+        1
+      ],
+      [
+        "0000108",
+        1
+      ],
+      [
+        "00005",
+        1
+      ],
+      [
+        "0000laxmi",
+        1
+      ],
+      [
+        "00014",
+        1
+      ],
+      [
+        "00015",
+        1
+      ],
+      [
+        "0001ab",
+        1
+      ],
+      [
+        "0001dd",
+        1
+      ],
+      [
+        "0001h",
+        1
+      ],
+      [
+        "00024",
+        1
+      ],
+      [
+        "0002f",
+        1
+      ],
+      [
+        "00032",
+        1
+      ],
+      [
+        "0003gfb",
+        1
+      ],
+      [
+        "00043",
+        1
+      ],
+      [
+        "00045",
+        1
+      ],
+      [
+        "00058",
+        1
+      ],
+      [
+        "00059",
+        1
+      ],
+      [
+        "0005th",
+        1
+      ],
+      [
+        "00060",
+        1
+      ],
+      [
+        "0006003",
+        1
+      ],
+      [
+        "00061",
+        1
+      ],
+      [
+        "00072",
+        1
+      ],
+      [
+        "0007th",
+        1
+      ],
+      [
+        "00082",
+        1
+      ]
+    ]
+  },
+  "train_source3.tsv": {
+    "rows": 5285603,
+    "scope": "all rows",
+    "duplicate_ids": 0,
+    "countries": {
+      "US": 3170056,
+      "India": 2115547
+    },
+    "scripts": {
+      "LATIN": 4599117,
+      "KANNADA+LATIN": 55457,
+      "LATIN+TAMIL": 49863,
+      "DEVANAGARI+LATIN": 394374,
+      "LATIN+MALAYALAM": 24342,
+      "LATIN+TELUGU": 52500,
+      "GUJARATI+LATIN": 45006,
+      "BENGALI+LATIN": 45061,
+      "GURMUKHI+LATIN": 10319,
+      "LATIN+OTHER": 9559,
+      "TAMIL": 1,
+      "NONE": 4
+    },
+    "counts": {
+      "missing_business_name": 0,
+      "missing_business_address": 175916,
+      "missing_country": 0,
+      "non_ascii": 989672,
+      "accented_latin": 329179,
+      "indic": 676923,
+      "devanagari": 394374,
+      "mixed_script": 686481,
+      "numeric_token": 4650080,
+      "likely_postal": 412941
+    },
+    "percentages": {
+      "missing_business_name": 0.0,
+      "missing_business_address": 3.328210612866687,
+      "missing_country": 0.0,
+      "non_ascii": 18.723918538717342,
+      "accented_latin": 6.22784193213149,
+      "indic": 12.806920988958119,
+      "devanagari": 7.4612868200657525,
+      "mixed_script": 12.987751823207304,
+      "numeric_token": 87.9763387450779,
+      "likely_postal": 7.8125617833953855
+    },
+    "distributions": {
+      "name_length": {
+        "count": 5285603,
+        "min": 2,
+        "max": 123,
+        "mean": 25.202143823514554,
+        "median": 25,
+        "p95": 42
+      },
+      "address_length": {
+        "count": 5285603,
+        "min": 0,
+        "max": 240,
+        "mean": 46.71443731207206,
+        "median": 42,
+        "p95": 91
+      },
+      "name_tokens": {
+        "count": 5285603,
+        "min": 1,
+        "max": 21,
+        "mean": 3.699964034377913,
+        "median": 4,
+        "p95": 6
+      },
+      "address_tokens": {
+        "count": 5285603,
+        "min": 0,
+        "max": 48,
+        "mean": 7.642991348385416,
+        "median": 7,
+        "p95": 16
+      }
+    },
+    "unique": {
+      "name": 4651609,
+      "normalized_name": 4224997,
+      "address": 4632764
+    },
+    "common_tokens": [
+      [
+        "limited",
+        1110769
+      ],
+      [
+        "no",
+        1077868
+      ],
+      [
+        "road",
+        958868
+      ],
+      [
+        "private",
+        868672
+      ],
+      [
+        "llc",
+        575654
+      ],
+      [
+        "new",
+        502116
+      ],
+      [
+        "delhi",
+        464632
+      ],
+      [
+        "incorporated",
+        448536
+      ],
+      [
+        "avenue",
+        438464
+      ],
+      [
+        "and",
+        392944
+      ],
+      [
+        "c",
+        384684
+      ],
+      [
+        "city",
+        373545
+      ],
+      [
+        "a",
+        373296
+      ],
+      [
+        "street",
+        364736
+      ],
+      [
+        "north",
+        356505
+      ],
+      [
+        "st",
+        337663
+      ],
+      [
+        "1",
+        331661
+      ],
+      [
+        "mh",
+        321760
+      ],
+      [
+        "dr",
+        311071
+      ],
+      [
+        "texas",
+        295329
+      ],
+      [
+        "nagar",
+        288356
+      ],
+      [
+        "mumbai",
+        282542
+      ],
+      [
+        "floor",
+        279424
+      ],
+      [
+        "s",
+        262361
+      ],
+      [
+        "2",
+        252858
+      ],
+      [
+        "lane",
+        245271
+      ],
+      [
+        "drive",
+        244563
+      ],
+      [
+        "center",
+        241045
+      ],
+      [
+        "york",
+        230784
+      ],
+      [
+        "b",
+        223211
+      ]
+    ],
+    "rare_tokens": [
+      [
+        "0000000",
+        1
+      ],
+      [
+        "0000000305",
+        1
+      ],
+      [
+        "00000134",
+        1
+      ],
+      [
+        "00000ganga",
+        1
+      ],
+      [
+        "00000sri",
+        1
+      ],
+      [
+        "0000pl",
+        1
+      ],
+      [
+        "0000sn",
+        1
+      ],
+      [
+        "00011",
+        1
+      ],
+      [
+        "00012",
+        1
+      ],
+      [
+        "00013",
+        1
+      ],
+      [
+        "00017",
+        1
+      ],
+      [
+        "00023",
+        1
+      ],
+      [
+        "0002f",
+        1
+      ],
+      [
+        "0002nd",
+        1
+      ],
+      [
+        "00039",
+        1
+      ],
+      [
+        "00044",
+        1
+      ],
+      [
+        "00049",
+        1
+      ],
+      [
+        "00055",
+        1
+      ],
+      [
+        "00058",
+        1
+      ],
+      [
+        "0007a",
+        1
+      ],
+      [
+        "0007th",
+        1
+      ],
+      [
+        "00083",
+        1
+      ],
+      [
+        "00097",
+        1
+      ],
+      [
+        "0009th",
+        1
+      ],
+      [
+        "000a103",
+        1
+      ],
+      [
+        "000b",
+        1
+      ],
+      [
+        "000d",
+        1
+      ],
+      [
+        "000s",
+        1
+      ],
+      [
+        "0010001",
+        1
+      ],
+      [
+        "001000264",
+        1
+      ]
+    ]
+  },
+  "train_ground_truth.tsv": {
+    "rows": 2206821,
+    "scope": "all rows",
+    "singleton_percentage": 5.584820880352326,
+    "one_match": 119157,
+    "two_matches": 375212,
+    "three_plus": 1589205,
+    "total_positive_links": 7638365,
+    "source2_links": 3693619,
+    "source3_links": 3944746,
+    "average_matches_per_s1": 3.4612526344456573,
+    "match_count_distribution": {
+      "5": 321957,
+      "4": 484115,
+      "3": 530841,
+      "6": 164868,
+      "2": 375212,
+      "7": 63968,
+      "0": 123247,
+      "1": 119157,
+      "8": 18680,
+      "9": 4205,
+      "10": 534,
+      "11": 37
+    }
+  }
+}

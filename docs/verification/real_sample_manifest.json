@@ -1,0 +1,21 @@
+{
+  "scope": "deterministic sampled-real experiment; every selected query label retained; target catalog contains all labeled targets plus hashed real distractors",
+  "seed": 42,
+  "full_rows": {
+    "source1": 2206821,
+    "source2": 5034616,
+    "source3": 5285603,
+    "ground_truth": 2206821
+  },
+  "sample_rows": {
+    "source1": 2000,
+    "source2": 103317,
+    "source3": 103579,
+    "ground_truth": 2000
+  },
+  "positive_targets": {
+    "source2": 3317,
+    "source3": 3579
+  },
+  "requested_distractors_per_target_source": 100000
+}

@@ -13,3 +13,7 @@ The ZIP contains `output/`, `code/business_entity_resolution/src/`, a reproducti
 | Run | Source commit | Data version | Configuration | Holdout F0.5 | Public score | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | — | — | — | — | — | — | No real-data run yet |
+
+## Primary hybrid workflow
+
+Use `python src/package_submission.py --team YOUR_TEAM --hybrid-index artifacts/index_test --model-dir artifacts/final_model --output output` to create `output/submission.zip` after validation. See the root README for training/inference. The older commands above remain for the legacy CPU baseline.

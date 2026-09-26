@@ -1,0 +1,71 @@
+{
+  "version": "hybrid-v1",
+  "evaluation_scope": "Sampled real run: 2,000 real S1 rows and a label-complete catalog of 206,896 real S2/S3 targets (all 6,896 labeled targets plus 100,000 hashed distractors per source). This is not full-catalog competition performance.",
+  "seed": 42,
+  "sample_size": 2000,
+  "query_batch_size": 32,
+  "feature_shard_queries": 128,
+  "normalization": {
+    "name_mappings": {
+      "pvt": "private",
+      "ltd": "limited",
+      "corp": "corporation",
+      "inc": "incorporated",
+      "co": "company"
+    },
+    "address_mappings": {
+      "rd": "road",
+      "ave": "avenue",
+      "ln": "lane",
+      "hwy": "highway",
+      "apt": "apartment"
+    },
+    "ambiguous_st_to_street": false,
+    "suffixes": [
+      "private",
+      "limited",
+      "corporation",
+      "incorporated",
+      "company",
+      "llc",
+      "llp"
+    ]
+  },
+  "transliteration": {
+    "enabled": true,
+    "backend": "anyascii",
+    "version": "0.3.3"
+  },
+  "tfidf": {
+    "analyzer": "char_wb",
+    "ngram_range": [
+      3,
+      5
+    ],
+    "min_df": 2,
+    "max_df": 1.0,
+    "max_features": 150000,
+    "batch_size": 20000,
+    "vocabulary_sample": 100000,
+    "top_k": 20,
+    "threads": 2
+  },
+  "bm25": {
+    "top_k": 20,
+    "max_tokens": 16
+  },
+  "thresholds": {
+    "start": 0.0,
+    "stop": 1.0,
+    "steps": 201
+  },
+  "model": {
+    "n_estimators": 200,
+    "num_leaves": 31,
+    "learning_rate": 0.05,
+    "min_child_samples": 20,
+    "n_jobs": 2,
+    "device_type": "cpu"
+  },
+  "reference_epochs": 5
+}

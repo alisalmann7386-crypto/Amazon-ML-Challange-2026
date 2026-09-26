@@ -1,0 +1,26 @@
+{
+  "name_mappings": {
+    "pvt": "private",
+    "ltd": "limited",
+    "corp": "corporation",
+    "inc": "incorporated",
+    "co": "company"
+  },
+  "address_mappings": {
+    "rd": "road",
+    "ave": "avenue",
+    "ln": "lane",
+    "hwy": "highway",
+    "apt": "apartment"
+  },
+  "ambiguous_st_to_street": false,
+  "suffixes": [
+    "private",
+    "limited",
+    "corporation",
+    "incorporated",
+    "company",
+    "llc",
+    "llp"
+  ]
+}

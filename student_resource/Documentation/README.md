@@ -8,3 +8,7 @@
 The architecture reflects the actual implemented baseline. Planned neural stages are explicitly separated from implemented code.
 
 - [Colab and disk-backed baseline](../../COLAB.md)
+
+- [Hybrid baseline audit](../../docs/AUDIT.md)
+- [Measured verification and limits](../../docs/VERIFICATION.md)
+- [Primary hybrid workflow](../../README.md)
