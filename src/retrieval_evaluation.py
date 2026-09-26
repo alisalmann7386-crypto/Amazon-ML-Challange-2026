@@ -13,9 +13,11 @@ MODES={'A_tfidf':['tfidf_name','tfidf_address'],'B_bm25':['bm25_name','bm25_addr
 def compare(index,cfg,output,queries=None):
     queries=split(index,cfg)['train'] if queries is None else queries
     r=HybridRetriever(index,cfg);stats={m:{} for m in MODES};attributions={'only_tfidf':0,'only_bm25':0,'only_transliteration':0,'multiple_families':0,'missed_all':0}
+    caps=sorted(set(cfg.get('blocking',{}).get('pilot_k_values',[20,50])))
+    pilots={k:{'true':0,'found':0,'non_singletons':0,'coverage':0.,'query_hits':0,'counts':[]} for k in caps}
     for qs in batches(queries,cfg['query_batch_size']):
         # Use >=50 per channel for Recall@50; union metrics use configured channel caps.
-        for q,cs in zip(qs,r.query_batch(qs,max(50,cfg['tfidf']['top_k'],cfg['bm25']['top_k']))):
+        for q,cs in zip(qs,r.query_batch(qs,max(50,cfg['tfidf']['top_k'],cfg['bm25']['top_k']),use_final_cap=False)):
             actual=set(q['matches']);base=[]
             for c in cs:
                 channels={ch:rank for ch,rank in c['ranks'].items() if rank<=cfg['tfidf' if ch.startswith('tfidf') else 'bm25']['top_k']}
@@ -27,6 +29,12 @@ def compare(index,cfg,output,queries=None):
                     s['true']+=len(actual);s['found']+=found;s['counts'].append(len(ids))
                     if actual:s['coverage']+=found/len(actual);s['non_singletons']+=1
                     for k in s['at']:s['at'][k]+=len(actual&set(ranking[:k]))
+            full_ranking=ranked(cs,CHANNELS)
+            for k,pilot in pilots.items():
+                selected=set(full_ranking[:k]);found=len(actual&selected)
+                pilot['true']+=len(actual);pilot['found']+=found;pilot['counts'].append(min(len(full_ranking),k))
+                if actual:
+                    pilot['non_singletons']+=1;pilot['coverage']+=found/len(actual);pilot['query_hits']+=int(bool(actual&selected))
             for tid in actual:
                 c=next((c for c in base if c['target']['entity_id']==tid),None)
                 if c is None:attributions['missed_all']+=1;continue
@@ -36,11 +44,18 @@ def compare(index,cfg,output,queries=None):
     for mode,groups in stats.items():
         report[mode]={}
         for key,s in groups.items():
-            counts=np.asarray(s['counts']);report[mode][key]={'candidate_micro_recall':s['found']/s['true'] if s['true'] else None,'macro_candidate_coverage_non_singletons':s['coverage']/s['non_singletons'] if s['non_singletons'] else None,'s1_count':len(counts),'average_candidates':float(counts.mean()),'median_candidates':float(np.median(counts)),'p95_candidates':float(np.quantile(counts,.95)),'reduction_ratio':1-float(counts.mean())/total if total else None,**{f'recall_at_{k}':found/s['true'] if s['true'] else None for k,found in s['at'].items()}}
+            counts=np.asarray(s['counts']);report[mode][key]={'candidate_micro_recall':s['found']/s['true'] if s['true'] else None,'macro_candidate_coverage_non_singletons':s['coverage']/s['non_singletons'] if s['non_singletons'] else None,'s1_count':len(counts),'average_candidates':float(counts.mean()),'median_candidates':float(np.median(counts)),'p95_candidates':float(np.quantile(counts,.95)),'p99_candidates':float(np.quantile(counts,.99)),'reduction_ratio':1-float(counts.mean())/total if total else None,**{f'recall_at_{k}':found/s['true'] if s['true'] else None for k,found in s['at'].items()}}
+    pilot_report={}
+    for k,s in pilots.items():
+        counts=np.asarray(s['counts']);pilot_report[f'k_{k}']={'candidate_micro_recall':s['found']/s['true'] if s['true'] else None,'macro_candidate_coverage_non_singletons':s['coverage']/s['non_singletons'] if s['non_singletons'] else None,'queries_with_at_least_one_true_candidate':s['query_hits'],'non_singleton_queries':s['non_singletons'],'s1_count':len(counts),'candidate_pairs':int(counts.sum()),'average_candidates':float(counts.mean()),'median_candidates':float(np.median(counts)),'p95_candidates':float(np.quantile(counts,.95)),'p99_candidates':float(np.quantile(counts,.99)),'reduction_ratio':1-float(counts.mean())/total if total else None}
     timing=r.timing.copy();r.close()
     for backend in ['tfidf','bm25']:timing[backend+'_queries_per_second']=timing['queries']/max(timing[backend+'_seconds'],1e-9)
     evaluation_scope=cfg.get('evaluation_scope','Sampled S1 queries; complete supplied target catalog.')
-    output=Path(output);dump(output/'metrics.json',{'scope':evaluation_scope+' Training groups only; Recall@K uses reciprocal-rank fusion of up to max(50,channel k) neighbors/channel; union counts use configured channel k.','methods':report,'attribution':attributions,'timing':timing})
+    floor=cfg.get('blocking',{}).get('failure_recall_floor',.93);k20=pilot_report.get('k_20',{}).get('candidate_micro_recall');k50=pilot_report.get('k_50',{}).get('candidate_micro_recall')
+    decision='run_k20'
+    if k20 is not None and k50 is not None:
+        decision='targeted_rescue_required' if k50<floor else ('consider_k50_only_if_gain_justifies_cost' if k50-k20>=.01 else 'select_k20')
+    output=Path(output);dump(output/'metrics.json',{'scope':evaluation_scope+' Training groups only; Recall@K uses reciprocal-rank fusion of up to max(50,channel k) neighbors/channel; union counts use configured channel k.','methods':report,'global_cap_pilot':pilot_report,'decision':{'rule':decision,'failure_recall_floor':floor},'attribution':attributions,'timing':timing})
     dump(output/'transliteration.json',{'without':report['C_hybrid'],'with':report['D_hybrid_transliteration'],'attribution':attributions})
     print(json.dumps({m:g.get('all') for m,g in report.items()},indent=2));print(json.dumps(timing,indent=2));return report
 

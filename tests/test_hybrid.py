@@ -23,6 +23,8 @@ from validate_submission import validate
 from retrieval_evaluation import compare
 from eda import run as eda
 from metrics import validate_threshold,threshold_search
+from data_integrity import audit
+from exact_baseline import run as exact_baseline
 
 class TestHybrid(unittest.TestCase):
     @classmethod
@@ -61,6 +63,13 @@ class TestHybrid(unittest.TestCase):
         vec=r.tf.models['name'];self.assertAlmostEqual(cosine_pairs(vec,['shree balaji traders'],['shree balaji traders'])[0],1,places=5)
         typo=dict(q,business_name_norm='shree balji tradres');self.assertTrue(r.tf.query(typo)['tfidf_name'])
         X=FeatureBuilder(r).batch([q],[cs]);self.assertEqual(X.shape,(len(cs),len(FEATURE_NAMES)));self.assertTrue(np.isfinite(X).all());r.close()
+
+    def test_global_candidate_cap(self):
+        r=HybridRetriever(self.index,self.cfg)
+        q=normalize_record({'entity_id':'S1-cap','business_name':'Example Company','business_address':'10 Main Road','country':'US'},self.cfg['normalization'],self.cfg['transliteration'])
+        self.assertLessEqual(len(r.query(q,final_k=2)),2)
+        self.assertGreaterEqual(len(r.query(q,use_final_cap=False)),len(r.query(q,final_k=2)))
+        r.close()
     def test_tsv_rejections(self):
         p=self.root/'bad.tsv';p.write_text('entity_id\tbusiness_name\tbusiness_address\tcountry\nS1-x\ta\tb\tUS\textra\n')
         with self.assertRaises(ValueError):table(p,FIELDS)
@@ -107,5 +116,23 @@ class TestHybrid(unittest.TestCase):
         for value in (-.01,1.1,float('nan'),float('inf'),'bad'):
             with self.assertRaises(ValueError):validate_threshold(value)
         with self.assertRaises(ValueError):threshold_search([],np.array([],dtype=int),np.array([]),np.array([]),[-.1,.5])
+
+    def test_integrity_repairs_preserve_source3_rows(self):
+        root=self.root/'repair_case';generate(root/'data')
+        path=root/'data/train/train_source3.tsv';rows=path.read_text(encoding='utf-8').splitlines()
+        first=rows[1].split('\t');second=rows[2].split('\t')
+        rows[1]='\t'.join(first[:3])
+        rows[2]='\t'.join([second[0],second[1],second[2],'extra address fragment',second[3]])
+        path.write_text('\n'.join(rows)+'\n',encoding='utf-8')
+        report=audit(root/'data/train','train',root/'integrity.json')
+        self.assertEqual(report['logical_rows']['train_source3.tsv'],12)
+        self.assertEqual(len(report['repairs']['train_source3.tsv']),2)
+        index=root/'index';build(root/'data/train','train',index,self.cfg)
+        with connect(index) as db:self.assertEqual(db.execute('SELECT count(*) FROM targets WHERE entity_id LIKE "S3-%"').fetchone()[0],12)
+
+    def test_exact_baseline_outputs_validate(self):
+        output=self.root/'exact_baseline';report=exact_baseline(self.index,output)
+        self.assertEqual(report['queries'],12)
+        self.assertEqual(validate(self.index,output),12)
 
 if __name__=='__main__':unittest.main()

@@ -1,5 +1,5 @@
 {
-  "version": "hybrid-v1",
+  "version": "hybrid-v2",
   "seed": 42,
   "sample_size": 20000,
   "query_batch_size": 32,
@@ -13,6 +13,7 @@
   "transliteration": {"enabled": true, "backend":"anyascii", "version":"0.3.3"},
   "tfidf": {"analyzer":"char_wb","ngram_range":[3,5],"min_df":2,"max_df":1.0,"max_features":150000,"batch_size":20000,"vocabulary_sample":100000,"top_k":20,"threads":2},
   "bm25": {"top_k":20,"max_tokens":16},
+  "blocking": {"final_k":20,"pilot_k_values":[20,50],"failure_recall_floor":0.93},
   "thresholds": {"start":0.0,"stop":1.0,"steps":201},
   "model": {"n_estimators":200,"num_leaves":31,"learning_rate":0.05,"min_child_samples":20,"n_jobs":2,"device_type":"cpu"},
   "reference_epochs":5

@@ -1,4 +1,5 @@
 {
+  "artifact_status": "historical_hybrid_v1_reduced_catalog_not_final_v2_performance",
   "scope": "Sampled real run: 2,000 real S1 rows and a label-complete catalog of 206,896 real S2/S3 targets (all 6,896 labeled targets plus 100,000 hashed distractors per source). This is not full-catalog competition performance. Training groups only; Recall@K uses reciprocal-rank fusion of up to max(50,channel k) neighbors/channel; union counts use configured channel k.",
   "methods": {
     "A_tfidf": {

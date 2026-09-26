@@ -11,6 +11,9 @@ python -m pip install -r requirements.txt
 Use only the organizer-provided test catalog. No test labels are expected.
 
 ```bash
+python src/data_integrity.py --data /path/to/dataset/test --split test --output artifacts/test_data_integrity.json
+python src/io_utils.py --data /path/to/dataset/test --split test --index artifacts/index_test --config artifacts/final_model/model_config.json
+python src/exact_baseline.py --index artifacts/index_test --output output/exact_baseline
 python src/inference.py --data /path/to/dataset/test --index artifacts/index_test --model-dir artifacts/final_model --output output
 python src/validate_submission.py --index artifacts/index_test --output output
 ```
@@ -20,13 +23,15 @@ The inference command reads the saved normalization, transliteration, TF-IDF, BM
 ## Retrain from the provided train files
 
 ```bash
+python src/data_integrity.py --data /path/to/dataset/train --split train --output artifacts/data_integrity.json
 python src/io_utils.py --data /path/to/dataset/train --split train --index artifacts/index_train --config artifacts/final_model/model_config.json
 python src/tfidf_retriever.py --index artifacts/index_train --config artifacts/final_model/model_config.json
 python src/bm25_retriever.py --index artifacts/index_train --config artifacts/final_model/model_config.json
+python src/retrieval_evaluation.py --index artifacts/index_train --config artifacts/final_model/model_config.json --output artifacts/retrieval_pilot
 python src/train.py --index artifacts/index_train --config artifacts/final_model/model_config.json --work artifacts/retrain --final artifacts/retrained_model
 ```
 
-The default is a deterministic sample of 20,000 S1 records split into approximately 60% train, 20% calibration and 20% holdout. The full supplied S2/S3 catalog is indexed. Exact selected S1 IDs and input SHA256 hashes are in `manifest.json`. LightGBM is the predetermined primary model; SGD is a reference on the same pairs/features/splits. The threshold is selected on calibration, not holdout. No ground-truth positives are injected into training candidates.
+The default is a deterministic sample of 20,000 S1 records split into approximately 60% train, 20% calibration and 20% holdout. The full supplied S2/S3 catalog is indexed. Candidates from all retrieval channels are merged, ranked and globally capped at K=20 by default. K=50 is a conditional pilot, not the default full run. Exact selected S1 IDs and input SHA256 hashes are in `manifest.json`. LightGBM is the predetermined primary model; SGD is a reference on the same pairs/features/splits. The threshold is selected on calibration, not holdout. No ground-truth positives are injected into training candidates.
 
 All texts are preserved as raw Unicode; normalization uses NFKC/casefold with combining marks retained. Optional AnyAscii transliteration creates additional fields without replacing originals. Character TF-IDF vocabulary is learned on a seeded bounded target sample (default 100,000), then **all targets** are transformed and searched in sparse shards. This vocabulary approximation and the shard disk I/O trade-off must be included in any performance report. A configured vocabulary sample of 0 fits all target texts and may require much more memory.
 

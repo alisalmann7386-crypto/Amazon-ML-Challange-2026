@@ -1,4 +1,6 @@
 {
+  "_status": "historical_stale_source3_count_rerun_data_integrity_before_use",
+  "_warning": "This artifact reported 5,285,603 Source-3 rows; the currently supplied file was counted as 5,274,632. Do not use these statistics as current-file truth.",
   "train_source1.tsv": {
     "rows": 2206821,
     "scope": "all rows",

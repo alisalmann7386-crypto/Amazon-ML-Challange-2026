@@ -26,14 +26,50 @@ VERSION = 1
 def log(message):
     print(time.strftime('%H:%M:%S'), message, flush=True)
 
-def stream(path, fields):
+def _repair_source_row(values, fields):
+    """Repair only the two recoverable source-row shapes seen in supplied TSVs.
+
+    We never invent or drop an entity ID. A missing final country becomes blank.
+    Extra tab-separated address fragments are joined into the address field.
+    Ground-truth rows and every other malformed shape remain hard failures.
+    """
+    if fields != ['entity_id', 'business_name', 'business_address', 'country']:
+        return None, None
+    if len(values) == 3:
+        return values + [''], 'missing_trailing_country'
+    if len(values) > 4:
+        return [values[0], values[1], ' '.join(v for v in values[2:-1] if v), values[-1]], 'extra_tabs_in_address'
+    return None, None
+
+
+def stream(path, fields, repairs=None):
+    """Stream a TSV without silently losing rows.
+
+    ``repairs`` may be a list. When supplied, compact repair records are added
+    for auditing. Recoverable source rows are also logged immediately.
+    """
+    path = Path(path)
     with open(path, encoding='utf-8-sig', newline='') as f:
-        reader = csv.DictReader(f, delimiter='\t', strict=True)
-        if reader.fieldnames != fields:
-            raise ValueError(f'{path}: expected {fields}, got {reader.fieldnames}')
-        for n, row in enumerate(reader, 2):
-            if None in row or any(v is None for v in row.values()):
-                raise ValueError(f'{path}:{n}: malformed TSV')
+        reader = csv.reader(f, delimiter='\t', strict=True)
+        try:
+            header = next(reader)
+        except StopIteration as exc:
+            raise ValueError(f'{path}: empty TSV') from exc
+        if header != fields:
+            raise ValueError(f'{path}: expected {fields}, got {header}')
+        for n, values in enumerate(reader, 2):
+            repair = None
+            if len(values) != len(fields):
+                column_count = len(values)
+                values, repair = _repair_source_row(values, fields)
+                if values is None:
+                    raise ValueError(f'{path}:{n}: malformed TSV ({column_count} columns)')
+            row = dict(zip(fields, values))
+            if repair:
+                item = {'line': n, 'entity_id': row['entity_id'], 'repair': repair}
+                if repairs is not None:
+                    repairs.append(item)
+                log(f'WARNING repaired {path.name}:{n}: {repair}; entity preserved as {row["entity_id"]}')
             yield row
 
 def fingerprint(directory, split):

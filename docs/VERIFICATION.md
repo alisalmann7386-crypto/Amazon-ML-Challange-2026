@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-All 16 local tests pass. The suite covers the original baselines and hybrid workflow, including empty target corpora, multilingual normalization, typo/cross-script retrieval, grouped splitting, model save/load, finite/range-checked thresholds, resumed inference and strict output validation.
+The local suite covers the original baselines and hybrid workflow, including empty target corpora, multilingual normalization, typo/cross-script retrieval, grouped splitting, global candidate caps, recoverable malformed-row preservation, model save/load, finite/range-checked thresholds, exact-baseline output, resumed inference and strict output validation. Run the command in the README to obtain the current test count for your checkout.
 
 Local notebook code cells were parsed for Python syntax and modules imported. These checks do not mean the notebook was executed inside an actual Colab runtime.
 
@@ -23,9 +23,9 @@ All four retrieval comparisons had training-group candidate micro recall 1.0. Av
 
 ## Real-data run
 
-All four uploaded training files were read successfully. Data rows: S1 2,206,821; S2 5,034,616; S3 5,285,603; ground truth 2,206,821. Full EDA is saved in `verification/real_full_eda.json`.
+The earlier EDA artifact reported S3=5,285,603, but the currently supplied Source-3 file was counted as 5,274,632 rows in both Drive and the prepared local copy. Therefore `verification/real_full_eda.json` is historical and must not be treated as the current file truth. Run `src/data_integrity.py` on the exact current four files before publishing row counts or training results.
 
-A deterministic sampled-real run used 2,000 S1 rows and 206,896 S2/S3 targets, retaining all 6,896 labeled targets plus 100,000 hashed distractors per source. It used Unicode and transliterated TF-IDF/BM25 channels, 91 features, grouped 1,200/400/400 splits, calibration-only thresholds and untouched holdout evaluation. See [real results](REAL_RESULTS.md). These are sampled-catalog metrics, not full-catalog competition performance.
+A deterministic sampled-real run used 2,000 S1 rows and 206,896 S2/S3 targets, retaining all 6,896 labeled targets plus 100,000 hashed distractors per source. It used Unicode and transliterated TF-IDF/BM25 channels, 91 features, grouped 1,200/400/400 splits, calibration-only thresholds and untouched holdout evaluation. See [real results](REAL_RESULTS.md). These are historical sampled-catalog metrics from the older uncapped configuration, not full-catalog competition performance or the final v2 model.
 
 ## Not executed here
 
@@ -33,4 +33,4 @@ Full 10.3-million-target indexing/training, actual Colab execution, GPU executio
 
 ## Next experiment
 
-Use a manageable real S1 training sample with the full target catalog. Inspect candidate misses by country/script, compare A/B/C/D, and vary per-channel k and vocabulary sample size using training/calibration only. Keep the final holdout fixed and untouched while choosing retrieval settings. Prioritize candidate recall and singleton false merges before increasing model complexity.
+First reconcile current file hashes and ground-truth IDs. Then run the full target catalog with the grouped training pilot: global K=20 first, K=50 only if needed, and targeted rescue if K=50 recall remains below the configured floor. Keep calibration and holdout fixed and untouched while choosing model thresholds.

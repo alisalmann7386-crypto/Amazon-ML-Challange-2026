@@ -9,7 +9,7 @@ from core import FIELDS, id_list
 from scalable import stream, fingerprint, log
 from normalize import normalize_record
 
-VERSION='hybrid-v1'
+VERSION='hybrid-v2'
 
 def config(path='configs/baseline.json'):
     cfg=json.loads(Path(path).read_text())
@@ -42,10 +42,11 @@ def get_rows(db,table,rids):
 
 def build(data,split,index,cfg):
     out=Path(index);out.mkdir(parents=True,exist_ok=True)
-    meta={'version':VERSION,'split':split,'files':fingerprint(data,split),'normalization':cfg['normalization'],'transliteration':cfg['transliteration']}
+    base_meta={'version':VERSION,'split':split,'files':fingerprint(data,split),'normalization':cfg['normalization'],'transliteration':cfg['transliteration']}
     manifest=out/'catalog.json'
     if manifest.exists():
-        if json.loads(manifest.read_text())!=meta:raise ValueError('Catalog fingerprint/config mismatch; use a new index folder')
+        saved=json.loads(manifest.read_text())
+        if any(saved.get(key)!=value for key,value in base_meta.items()):raise ValueError('Catalog fingerprint/config mismatch; use a new index folder')
         return
     temp=out/'catalog.building.sqlite'
     if temp.exists():temp.unlink()
@@ -53,10 +54,11 @@ def build(data,split,index,cfg):
     for table in ('targets','queries'):
         db.execute(f'CREATE TABLE {table}(entity_id TEXT UNIQUE NOT NULL,data TEXT,name TEXT,address TEXT,tname TEXT,taddress TEXT,matches TEXT)')
     db.execute('CREATE TABLE links(qid TEXT,tid TEXT,PRIMARY KEY(qid,tid))')
+    source_counts={};source_repairs={}
     try:
         for s in (2,3,1):
-            table='queries' if s==1 else 'targets';count=0
-            for batch in batches(stream(Path(data)/f'{split}_source{s}.tsv',FIELDS),5000):
+            table='queries' if s==1 else 'targets';count=0;repairs=[]
+            for batch in batches(stream(Path(data)/f'{split}_source{s}.tsv',FIELDS,repairs),5000):
                 values=[]
                 for r in batch:
                     eid=r['entity_id']
@@ -65,20 +67,31 @@ def build(data,split,index,cfg):
                     values.append((eid,json.dumps(r,ensure_ascii=False),r['business_name_norm'],r['business_address_norm'],r['business_name_transliterated'],r['business_address_transliterated'],None))
                 db.executemany(f'INSERT INTO {table} VALUES (?,?,?,?,?,?,?)',values);db.commit();count+=len(values)
                 if count%100000==0:log(f'Normalized S{s}: {count:,}')
+            source_counts[f'{split}_source{s}.tsv']=count;source_repairs[f'{split}_source{s}.tsv']=repairs
+            log(f'Finished S{s}: {count:,} rows; recoverable repairs={len(repairs)}')
         if split=='train':
             db.execute('CREATE TEMP TABLE truth_ids(id TEXT PRIMARY KEY)')
             for batch in batches(stream(Path(data)/'train_ground_truth.tsv',['source1_entity_id','matched_entity_ids']),5000):
+                truth_rows=[];updates=[];link_rows=[]
                 for r in batch:
                     qid=r['source1_entity_id'];ids=id_list(r['matched_entity_ids'])
-                    db.execute('INSERT INTO truth_ids VALUES (?)',(qid,))
-                    if db.execute('UPDATE queries SET matches=? WHERE entity_id=?',(json.dumps(ids),qid)).rowcount!=1:raise ValueError('Unknown S1 truth ID')
-                    db.executemany('INSERT INTO links VALUES (?,?)',[(qid,t) for t in ids])
+                    truth_rows.append((qid,));updates.append((json.dumps(ids),qid));link_rows.extend((qid,t) for t in ids)
+                db.executemany('INSERT INTO truth_ids VALUES (?)',truth_rows)
+                db.executemany('UPDATE queries SET matches=? WHERE entity_id=?',updates)
+                db.executemany('INSERT INTO links VALUES (?,?)',link_rows)
                 db.commit()
+            unknown_s1=[row[0] for row in db.execute('SELECT id FROM truth_ids LEFT JOIN queries ON id=entity_id WHERE entity_id IS NULL ORDER BY id LIMIT 25')]
+            if unknown_s1:raise ValueError(f'Ground truth contains S1 IDs absent from Source 1; examples={unknown_s1}')
             if db.execute('SELECT 1 FROM queries WHERE matches IS NULL LIMIT 1').fetchone():raise ValueError('Missing S1 labels')
-            if db.execute('SELECT 1 FROM links LEFT JOIN targets ON tid=entity_id WHERE entity_id IS NULL LIMIT 1').fetchone():raise ValueError('Unknown target label')
+            unknown_count=db.execute('SELECT count(*) FROM links LEFT JOIN targets ON tid=entity_id WHERE entity_id IS NULL').fetchone()[0]
+            if unknown_count:
+                examples=[row[0] for row in db.execute('SELECT tid FROM links LEFT JOIN targets ON tid=entity_id WHERE entity_id IS NULL ORDER BY tid LIMIT 25')]
+                by_prefix={row[0]:row[1] for row in db.execute("SELECT CASE WHEN tid LIKE 'S2-%' THEN 'S2' WHEN tid LIKE 'S3-%' THEN 'S3' ELSE 'other' END,count(*) FROM links LEFT JOIN targets ON tid=entity_id WHERE entity_id IS NULL GROUP BY 1")}
+                raise ValueError(f'Ground truth references {unknown_count:,} target IDs absent from the completed S2/S3 import; prefixes={by_prefix}; examples={examples}. Verify file hashes/versions with data_integrity.py.')
             db.execute('CREATE INDEX links_target ON links(tid,qid)')
         db.commit()
     finally:db.close()
+    meta={**base_meta,'ingest':{'row_counts':source_counts,'repairs':source_repairs}}
     os.replace(temp,out/'catalog.sqlite');dump(manifest,meta);log('Normalized catalog complete')
 
 def sample_queries(db,n,seed):

@@ -1,51 +1,92 @@
-# Hybrid baseline in Colab
+# Run the project in Google Colab
 
-[Open Colab_Baseline.ipynb](https://colab.research.google.com/github/alisalmann7386-crypto/Amazon-ML-Challange-2026/blob/main/notebooks/Colab_Baseline.ipynb)
+[Open the notebook](https://colab.research.google.com/github/alisalmann7386-crypto/Amazon-ML-Challange-2026/blob/main/notebooks/Colab_Baseline.ipynb), select **Copy to Drive**, and run cells from top to bottom.
 
-## Drive inputs
+## 1. Drive folders
 
-Create `MyDrive/AmazonML2026/input/train/` containing exactly one copy of each training file: Source1, Source2, Source3 and ground truth. TSVs or ZIPs are accepted, including duplicate-download names like `train_source3(1).tsv`; don't include both an archive and its extracted copies. Later place the three test source files in `input/test/`.
+Create:
 
-The notebook stores completed work in `MyDrive/AmazonML2026/artifacts/<run_key>/`. Heavy operations run under `/content/er_hybrid/<run_key>/`. Change `SAMPLE_SIZE` and the optional LightGBM device in the configuration cell. The default CPU workflow runs on CPU or GPU runtimes; TF-IDF and BM25 stay on CPU.
+```text
+MyDrive/AmazonML2026/input/train/
+```
 
-## Training cells
+Upload exactly one copy of:
 
-1. Clone, or fast-forward an existing clean checkout. Local modifications cause a clear stop; they are not overwritten.
-2. Install the pinned requirements in an isolated virtual environment, then run local smoke tests.
-3. Mount Drive and set paths/config. Restore previously saved artifacts for the exact configuration.
-4. Prepare train TSVs locally. Run streaming EDA (default notebook prefix sample; set `EDA_MAX_ROWS=0` for full statistics).
-5. Normalize to a strict disk catalog, preserving raw Unicode and optional offline transliterations.
-6. Build Unicode/transliterated TF-IDF shards and SQLite BM25 index. Log vocabulary sizes, nnz, memory and build times.
-7. Compare all retrieval methods on training groups; generate descriptive positive/random/hard-negative EDA samples.
-8. Generate cached pair-feature shards; train LightGBM and the SGD reference on identical splits; calibrate and report untouched holdout scores.
-9. Save the model, threshold, feature names, configurations, importance, reports, input hashes and split IDs. Copy completed artifacts to Drive.
+```text
+train_source1.tsv
+train_source2.tsv
+train_source3.tsv
+train_ground_truth.tsv
+```
 
-Default S1 sample = 20,000; full target catalog is indexed. For a first runtime feasibility check, reduce S1 `SAMPLE_SIZE` to 2,000. TF-IDF vocabulary is sampled separately (default 100,000 target rows). This still indexes every target row, but does not promise vocabulary coverage for rare scripts/tokens.
+Plain TSVs or ZIPs are accepted. Do not keep both a ZIP and its extracted TSV in the input folder.
 
-## Test cells
+## 2. Configuration
 
-Keep `RUN_TEST=False` until test files arrive. Set it to `True` and rerun configuration/test cells when ready:
+Start with:
 
-- Prepare the three test TSVs.
-- Use saved model settings to build fresh test target indexes.
-- Retrieve, score in batches, apply the saved threshold and write both required TSVs.
-- Validate all IDs/coverage/subset rules.
-- Complete methodology/team details, then create `output/submission.zip`.
+```python
+SAMPLE_SIZE = 20000
+EDA_MAX_ROWS = 10000       # Use 0 only when you want a full streaming EDA.
+LIGHTGBM_DEVICE = "cpu"
+RUN_TAG = "integrity_v2_k20"
+RUN_TEST = False
+```
 
-There is no `test_ground_truth.tsv` and no locally computed true test F0.5. Upload only `matching_results.tsv` for leaderboard scoring.
+The model does not require a GPU. TF-IDF and BM25 remain CPU operations. A GPU can help only LightGBM and does not solve excessive candidate generation.
 
-## Resume and storage
+## 3. What the notebook does
 
-A configuration-derived run key separates experiments. Catalog/TF-IDF/feature/prediction manifests also verify compatibility and input fingerprints. Reusing an index with changed input data produces an error; select a new `RUN_TAG` for changed datasets. The notebook restores the last completed Drive checkpoint; it does not silently update/reuse different data.
+1. Mounts Drive and clones or safely fast-forwards the repository.
+2. Installs pinned packages and runs the test suite.
+3. Copies the TSV bytes to local Colab storage and writes a copy manifest.
+4. Runs `data_integrity.py` before EDA. Stop here if it reports unknown label IDs.
+5. Runs EDA on the verified data.
+6. Normalizes Unicode text and creates optional transliterations.
+7. Builds the full Source-2/Source-3 TF-IDF and BM25 indexes.
+8. Runs the grouped retrieval pilot. K=20 is the default; K=50 is diagnostic only.
+9. Generates bounded feature shards and trains LightGBM plus SGD.
+10. Selects thresholds on calibration and evaluates the untouched grouped holdout.
+11. Saves model files and checkpoints artifacts to Drive.
 
-Completed feature and inference shards can be reused. LightGBM/SGD training restarts deterministically if interrupted; it does not resume individual boosting iterations. Incomplete catalog imports restart; completed TF-IDF shards resume. `finally` checkpointing runs for ordinary Python errors/manual interrupts, but cannot survive an abrupt runtime termination. Large checkpoint copies need time and Drive space.
+## 4. Understanding Source-3 warnings
 
-Full-data CPU duration and peak memory remain unmeasured. The workflow bounds feature-generation memory, but LightGBM's training bins and sampled calibration scores need additional RAM. Never interpret synthetic smoke-test scores as challenge performance. See [README](README.md) and [verification](docs/VERIFICATION.md).
+Two recoverable source-row forms are handled without dropping the entity:
 
-## Result labels
+- three columns: the final country is treated as missing;
+- more than four columns: extra tab fragments are joined into the address.
 
-- `docs/verification/synthetic_*.json`: tiny software smoke tests only.
-- `docs/verification/real_sample_*.json`: real records with a reduced, label-complete target catalog; not competition performance.
-- Colab artifacts under `artifacts/<run key>/`: full-target results when the complete S2/S3 files are used.
+Each repair is recorded in `artifacts/data_integrity.json` and later in `catalog.json`. The original TSV is unchanged. Any other malformed row stops the run.
 
-The full-run notebook prepares four training files, runs EDA, builds TF-IDF and BM25, compares retrieval, trains/calibrates/evaluates, and checkpoints to Drive. Use `SAMPLE_SIZE=20000` for the documented baseline; the target catalog remains complete.
+If the integrity report says ground truth references target IDs that do not exist, do not continue training. Check that Source 3 and ground truth came from the same download/version. Delete neither raw file; use the printed SHA-256 values to compare copies.
+
+## 5. Resume behavior
+
+Artifacts are stored under:
+
+```text
+MyDrive/AmazonML2026/artifacts/<run_key>/
+```
+
+The run key includes the configuration. Use a new `RUN_TAG` after changing input files or K. Completed compatible shards resume; changed hashes/configurations stop with an explicit error. A `.building.sqlite` file is incomplete and is never treated as the final catalog.
+
+## 6. Test inference later
+
+When the test files arrive, upload only:
+
+```text
+test_source1.tsv
+test_source2.tsv
+test_source3.tsv
+```
+
+Set `RUN_TEST=True`. The notebook builds fresh test indexes, loads the saved model and threshold, writes both TSV outputs, validates them and creates the ZIP. It must not expect or create `test_ground_truth.tsv`.
+
+Before the hybrid submission, run the notebook's exact-baseline cell. It produces a no-ML `matching_results.tsv` using normalized business name plus country and validates the complete submission path.
+
+## 7. Result labels
+
+- Synthetic metrics: software smoke tests only.
+- Sampled-real metrics: engineering checks, not competition performance.
+- Full-target pilot metrics: blocking recall and compute estimates, not test F0.5.
+- Test F0.5: available only from the official leaderboard because test labels are not supplied.

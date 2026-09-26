@@ -14,7 +14,7 @@ The baseline combines sparse character TF-IDF and SQLite BM25 retrieval over nor
 
 ### 2.1 Problem Analysis
 
-Supplied data may contain abbreviations, script differences, typos and incomplete addresses. All four real training files were read successfully: 2,206,821 S1 rows, 5,034,616 S2 rows, 5,285,603 S3 rows and 2,206,821 ground-truth rows. Exact full-corpus EDA is versioned at `docs/verification/real_full_eda.json`; the notebook can reproduce it in Colab.
+Supplied data may contain abbreviations, script differences, typos, incomplete addresses and a small number of recoverable malformed TSV rows. Copy the exact row counts and SHA-256 hashes from the current run's `artifacts/data_integrity.json`. Do not reuse the historical Source-3 count in `docs/verification/real_full_eda.json`; it conflicts with the currently supplied file.
 
 ### 2.2 Solution Strategy
 

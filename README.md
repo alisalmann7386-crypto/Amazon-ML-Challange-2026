@@ -1,144 +1,155 @@
-# Amazon-ML-Challange-2026
+# Amazon ML Challenge 2026 - Business Entity Resolution
 
-## Business Entity Resolution — multilingual hybrid baseline
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alisalmann7386-crypto/Amazon-ML-Challange-2026/blob/main/notebooks/Colab_Baseline.ipynb)
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alisalmann7386-crypto/Amazon-ML-Challange-2026/blob/main/notebooks/Colab_Baseline.ipynb)
+This project matches each Source-1 business with zero, one, or several records from Source 2 and Source 3. It is designed for the real multilingual data and for a Colab-sized compute budget.
 
-Match every S1 business to **zero, one, or multiple S2/S3 records**. The primary workflow combines character TF-IDF and BM25 candidates, optional offline transliteration, pair features, and LightGBM. It works on CPU; GPU is optional for LightGBM only.
-
-**Verification:** all 16 unit/integration tests pass. A deterministic sampled-real run has been executed on 2,000 real S1 queries and 206,896 real S2/S3 targets; its metrics are engineering checks, not full-catalog competition scores. See [real results](docs/REAL_RESULTS.md) and [verification details](docs/VERIFICATION.md).
-
-## Architecture
+## Simple architecture
 
 ```mermaid
 flowchart TD
-    D["Supplied TSV files"] --> E["Strict parsing and EDA"]
-    E --> N["Raw Unicode + NFKC + optional transliteration"]
-    N --> T["Character TF-IDF: sparse shards"]
-    N --> B["BM25: SQLite FTS5"]
-    T --> U["Candidate union + channel metadata"]
-    B --> U
-    U --> F["String, vector, address and retrieval features"]
-    F --> L["LightGBM + SGD reference"]
-    L --> C["Calibration threshold"]
-    C --> H["Untouched grouped holdout"]
-    C --> M["Saved model and configurations"]
+    A["Train TSV files"] --> B["Integrity check"]
+    B --> C["Normalize + transliterate"]
+    C --> D["TF-IDF + BM25 retrieval"]
+    D --> E["Merge, rank and keep global top K"]
+    E --> F["Pair features"]
+    F --> G["LightGBM + SGD reference"]
+    G --> H["Calibration threshold"]
+    H --> I["Untouched grouped holdout"]
+    H --> J["Saved model + test inference"]
 ```
 
-At inference, the same configuration builds **new test S2/S3 indexes**. Every test S1 is processed, including France and singletons. Test ground truth is neither expected nor fabricated.
+The default final candidate budget is **K=20 per Source-1 record**. K=50 is tested only when K=20 misses important true links. K=100 is intentionally excluded because it could create about 220 million full-run pairs.
 
-## Quick start
+## Important Source-3 protection
 
-Python 3.11+. Clone this repository and run from its root:
+The project never silently drops malformed source rows:
+
+- a row missing only its final country is preserved with a blank country;
+- extra tab fragments are joined into the address field;
+- every repair is written to the integrity/catalog report;
+- other malformed shapes remain hard failures;
+- original TSV bytes are never edited;
+- copied files receive SHA-256, byte-count and physical-line verification.
+
+Run the integrity check before EDA or indexing. It also verifies that every ground-truth target ID exists in the completed Source-2/Source-3 catalog. This distinguishes a real file-version mismatch from an incomplete `.building.sqlite` index.
+
+## Recommended execution order
+
+1. Prepare and verify the four training files.
+2. Run the full integrity check.
+3. Run EDA only after integrity passes.
+4. Normalize all rows and build the target catalog.
+5. Build TF-IDF and BM25 indexes.
+6. Run the grouped training retrieval pilot at K=20; inspect K=50 only if needed.
+7. Generate bounded feature shards, train LightGBM and the SGD reference, select the threshold on calibration, and report the untouched holdout.
+8. When test files arrive, create an exact-match baseline submission first; then run hybrid inference.
+
+Detailed rationale: [cost-aware blocking strategy](docs/BLOCKING_STRATEGY.md). Colab instructions: [COLAB.md](COLAB.md).
+
+## Quick local smoke test
 
 ```bash
 python -m pip install -r requirements.txt
 python -m unittest discover -s tests -v
 ```
 
-Put the four train TSVs under `dataset/train/`. `src/prepare_data.py` also accepts folders containing ZIPs. Large data stays outside Git. [Full Colab instructions](COLAB.md) include Drive paths and checkpoint handling.
+## Colab training commands
 
-For a bounded real-data check before the full Colab run:
+Place these files in `MyDrive/AmazonML2026/input/train/`:
 
-```bash
-python src/make_real_sample.py --data dataset/train --output artifacts/real_sample/data --queries 2000 --distractors-per-source 100000
-python src/io_utils.py --data artifacts/real_sample/data --split train --index artifacts/real_sample/index --config configs/work_real_sample.json
-python src/tfidf_retriever.py --index artifacts/real_sample/index --config configs/work_real_sample.json
-python src/bm25_retriever.py --index artifacts/real_sample/index --config configs/work_real_sample.json
-python src/retrieval_evaluation.py --index artifacts/real_sample/index --config configs/work_real_sample.json --output artifacts/real_sample/retrieval_comparison
-python src/train.py --index artifacts/real_sample/index --config configs/work_real_sample.json --work artifacts/real_sample/run --final artifacts/real_sample/final_model --retrieval-output artifacts/real_sample/retrieval_comparison --error-output artifacts/real_sample/error_analysis --skip-retrieval-eval
+```text
+train_source1.tsv
+train_source2.tsv
+train_source3.tsv
+train_ground_truth.tsv
 ```
 
+The notebook runs the commands below with Drive checkpoints:
+
 ```bash
-# 1. EDA (0 = all rows; use --max-rows 10000 for a labeled prefix sample)
-python src/eda.py --data dataset/train --output artifacts/eda
+# Copy without changing the bytes; write prepare_manifest.json.
+python src/prepare_data.py \
+  --input /content/drive/MyDrive/AmazonML2026/input/train \
+  --output dataset/train --split train
 
-# 2. Strict ingest and persistent Unicode/transliterated representations
-python src/io_utils.py --data dataset/train --split train --index artifacts/index_train
+# Must pass before EDA/index construction.
+python src/data_integrity.py \
+  --data dataset/train --split train \
+  --output artifacts/data_integrity.json
 
-# 3. Separate retrieval indexes
-python src/tfidf_retriever.py --index artifacts/index_train
-python src/bm25_retriever.py --index artifacts/index_train
-
-# 4. Compare TF-IDF / BM25 / hybrid / hybrid+transliteration on train groups only
-python src/hybrid_retriever.py --index artifacts/index_train --output artifacts/retrieval_comparison
-
-# 5. Optional labeled-pair EDA once indexes exist
-python src/eda.py --data dataset/train --index artifacts/index_train --pairs-only --output artifacts/eda
-
-# 6. Train both models, calibrate thresholds, evaluate fixed holdout, save artifacts
-python src/train.py --index artifacts/index_train --work artifacts/run --final artifacts/final_model --skip-retrieval-eval
+python src/eda.py --data dataset/train --config configs/baseline.json --output artifacts/eda
+python src/io_utils.py --data dataset/train --split train --index artifacts/index_train --config configs/baseline.json
+python src/tfidf_retriever.py --index artifacts/index_train --config configs/baseline.json
+python src/bm25_retriever.py --index artifacts/index_train --config configs/baseline.json
+python src/retrieval_evaluation.py --index artifacts/index_train --config configs/baseline.json --output artifacts/retrieval_pilot
+python src/train.py --index artifacts/index_train --config configs/baseline.json \
+  --work artifacts/run --final artifacts/final_model \
+  --retrieval-output artifacts/retrieval_pilot \
+  --error-output artifacts/error_analysis --skip-retrieval-eval
 ```
 
-Omit `--skip-retrieval-eval` if step 4 wasn't run; training then runs the comparison first. All commands accept `--config configs/baseline.json` except inference, which uses the saved model configuration.
+## How the blocker controls cost
 
-## Data and normalization
+Each TF-IDF/BM25 channel retrieves its best results. The candidates are merged by target ID and ranked using reciprocal-rank fusion. Training and inference then keep only the best `blocking.final_k` unique targets; the default is 20.
 
-Sources: `entity_id`, `business_name`, `business_address`, `country`. Labels: `source1_entity_id`, `matched_entity_ids`. All files are tab-separated. IDs stay strings and have source prefixes. See [the supplied problem statement](student_resource/README.md) and [data contract](student_resource/dataset/README.md).
+The retrieval report measures both sides of cost:
 
-`normalize.py` preserves raw fields and creates normalized names/addresses, a secondary core name, and separate transliterated names/addresses. NFKC, Unicode casefold, whitespace and punctuation normalization retain combining marks. Legal suffixes are canonicalized, then stripped only from the secondary core-name representation. Address maps are configurable. `st → street` is **off by default** because “St” may mean “Saint”; enable it explicitly if validated on your data.
+- final candidate pairs requiring features and ML scoring;
+- uncapped retrieval work, elapsed time, p95/p99 candidates and throughput.
 
-AnyAscii runs offline; it is transliteration, not translation or business lookup. Its spelling is approximate: `श्री बालाजी ट्रेडर्स` becomes `sri balaji tredrs`, not necessarily the exact English spelling. Original Unicode remains intact, while character similarity can bridge romanization differences. Results are compared with and without transliteration; improvement is not assumed.
+A top-20 output does not guarantee cheap retrieval when common tokens create large posting lists. That is why the pilot records runtime as well as recall.
 
-## Retrieval and features
+## Model and evaluation rules
 
-- Character TF-IDF: separate Unicode name/address and optional transliterated name/address indexes; float32 CSR shards; sparse top-N products; configurable 3–5 grams, `min_df`, vocabulary size and batching.
-- **Vocabulary fitting uses a seeded sample of at most 100,000 target rows by default.** Every S2/S3 record is then transformed and searched. Set `vocabulary_sample=0` only with enough memory for full-catalog vocabulary fitting.
-- BM25: field-specific SQLite FTS5 queries preserve native scores (smaller/more negative means stronger), ranks and channel flags. SQLite is storage/indexing; BM25 is the ranking function.
-- Candidate union: no label injection, no forced match, no country exclusion. Up to 8 channels × configured k before deduplication; the union is not silently capped at 20.
-- Features: Levenshtein, Jaro/Jaro-Winkler, Jaccard, overlap/containment, token-set/sort scores, core/exact matches, true pairwise character and word TF-IDF cosine, numeric/postal/house-number heuristics, script/country agreement, rare-token overlap, retrieval scores and interaction flags. Feature order is persisted and validated.
+- LightGBM is the primary model; SGD is the reference.
+- Split by connected Source-1 label groups so related records cannot leak across partitions.
+- Choose the probability threshold only on calibration.
+- Never tune on the untouched holdout.
+- Never inject true pairs into candidate lists.
+- Report candidate recall separately from model precision, recall and macro F0.5.
+- Synthetic and reduced-catalog results are smoke tests, not competition scores.
 
-All retrieved positives and negatives are retained. Negatives ranked in the top 5 of any channel are counted as hard negatives; other retrieved negatives are normal negatives. Random negatives are created only for descriptive EDA, not inserted into training.
+## Test inference
 
-## Training and evaluation
+Place only the three test sources in `dataset/test/`. A `test_ground_truth.tsv` is neither expected nor created.
 
-Default: deterministically sample **20,000 S1 records**, then split approximately **60% train / 20% calibration / 20% holdout**. The full S2/S3 catalog is used for retrieval. Connected components of the full supplied label graph keep linked S1 records together, even through unsampled intermediaries. Text-only target vocabulary/index statistics are transductive; holdout labels do not fit the model or select thresholds.
+```bash
+python src/inference.py --data dataset/test --index artifacts/index_test \
+  --model-dir artifacts/final_model --output output/hybrid
+python src/validate_submission.py --index artifacts/index_test --output output/hybrid
+```
 
-LightGBM is the primary model chosen before holdout evaluation. SGD uses the same features, candidates and splits as a reference. Thresholds maximize exact macro F0.5 on calibration; ties choose the higher threshold. Singleton-empty predictions receive 1 and singleton false merges receive 0. Reports include micro precision/recall (explicitly labeled), false positives/negatives, predicted match count, singleton accuracy, and breakdowns by country/script/cardinality.
+Create the fast no-ML leaderboard baseline from the same test index:
 
-Retrieval reports include micro recall, macro coverage over non-singletons, counts and reduction ratio. Recall@5/10/20/30/50 uses reciprocal-rank fusion; raw union metrics use configured channel caps. See report `scope` for the exact definition. Undefined recall for singleton-only slices is `null`, not a misleading 1.
+```bash
+python src/exact_baseline.py --index artifacts/index_test --output output/exact_baseline
+```
 
-## Saved outputs
+Both workflows write `candidate_pairs.tsv` and `matching_results.tsv`. Package the selected hybrid output with:
 
-| Path | Contents |
+```bash
+python src/package_submission.py --team YOUR_TEAM --hybrid-index artifacts/index_test \
+  --model-dir artifacts/final_model --output output/hybrid
+```
+
+## Main outputs
+
+| Path | Meaning |
 | --- | --- |
-| `artifacts/eda/` | Source/label statistics, sampled positive/random/hard pairs and similarity distributions |
-| `artifacts/retrieval_comparison/metrics.json` | A/B/C/D retrieval comparisons and channel attribution |
-| `artifacts/retrieval_comparison/transliteration.json` | Comparison with/without transliteration |
-| `artifacts/run/metrics.json` | LightGBM and SGD calibration/holdout metrics |
-| `artifacts/final_model/model.joblib` | Primary model, threshold, fixed feature names and full configuration |
+| `dataset/train/prepare_manifest.json` | Copy hashes, sizes and physical line counts |
+| `artifacts/data_integrity.json` | True row counts, repairs, duplicates and label-ID checks |
+| `artifacts/retrieval_pilot/metrics.json` | K=20/K=50 recall and cost comparison |
+| `artifacts/run/metrics.json` | Calibration and holdout metrics for LightGBM/SGD |
+| `artifacts/final_model/model.joblib` | Saved primary model |
 | `artifacts/final_model/threshold.json` | Calibration-selected threshold |
-| `artifacts/final_model/feature_names.json` | Feature schema/order |
-| `artifacts/final_model/model_config.json` | Full reproduction configuration |
-| `artifacts/final_model/normalization_config.json` | Text rules |
-| `artifacts/final_model/transliteration_config.json` | Transliteration configuration |
-| `artifacts/final_model/feature_importance.csv` | LightGBM gain and split counts |
-| `artifacts/final_model/train_metrics.json` | Training run report |
-| `artifacts/final_model/manifest.json` | Data hashes, configurations, exact split IDs |
-| `artifacts/error_analysis/` | Wrong merges, misses, retrieval misses, script/transliteration and numeric slices |
+| `output/hybrid/candidate_pairs.tsv` | Exact candidates passed to the model |
+| `output/hybrid/matching_results.tsv` | Final predictions |
 
-## Test inference and submission
+Large TSVs, indexes and run artifacts remain outside Git. The repository contains code, documentation, tests and only explicitly labelled verification artifacts.
 
-After receiving the three **test** source files:
+## Current results warning
 
-```bash
-python src/inference.py --data dataset/test --index artifacts/index_test --model-dir artifacts/final_model --output output
-python src/validate_submission.py --index artifacts/index_test --output output
-python src/package_submission.py --team YOUR_TEAM --hybrid-index artifacts/index_test --model-dir artifacts/final_model --output output
-```
+The committed sampled-real metrics were produced with an earlier sampled catalog and configuration. They remain engineering evidence only. The earlier full-data EDA reported a Source-3 count that conflicts with the currently supplied file, so it is archived as stale until `src/data_integrity.py` completes on the exact four current files. See [real-results status](docs/REAL_RESULTS.md).
 
-Outputs: `output/candidate_pairs.tsv`, `output/matching_results.tsv`, `output/submission.zip`. The candidate TSV is precisely the union passed to the classifier. Each S1 appears exactly once, matched IDs are unique valid targets, and matches are a subset of candidates. Complete team details and measured results in `Documentation_template.md` before final packaging. The package carries source, pinned requirements, configurations and the trained model. [Package reproduction guide](REPRODUCE_HYBRID.md).
-
-## Scaling and current limits
-
-There is no dense all-pairs matrix. Catalogs are disk-backed, TF-IDF transformations/search are sharded, feature arrays are float32, and feature/inference shards support resume. Training arrays are memory-mapped, but **LightGBM binning and calibration scores still require RAM proportional to the sampled candidate set**. The full 2.2M S1 set is not trained by default.
-
-Full-catalog sparse search scans disk shards per query batch. This trades lower peak memory for I/O and is not an ANN index. Millions of targets can require substantial disk and runtime; no full-scale performance guarantee is made. Start with a smaller S1 sample and inspect logs: vocabulary/shape/nnz/memory, index build time, queries/sec and feature pairs/sec. Resume uses fingerprints/config manifests; completed catalog builds are reused, incomplete catalog imports restart, completed TF-IDF/feature/inference shards resume. A forced Colab reset can lose local work since the last Drive checkpoint.
-
-Postal/house-number and script labels are heuristics, not address validation. Raw BM25 magnitudes and TF-IDF vocabularies may shift on a new catalog; validate by country and noise type. AnyAscii may lose distinctions or render languages imperfectly. No MiniLM, FAISS, transformer or cross-encoder is required.
-
-## Repository continuity
-
-Original `core.py`, `pipeline.py`, `scalable.py`, `analyze.py`, ZIP preparation, tests and package modes remain available. [Audit](docs/AUDIT.md), [legacy README](docs/LEGACY_README.md), [legacy Colab guide](docs/LEGACY_COLAB.md). Legacy document links assume their original root location.
-
-This is independent participant code, not official Amazon software. Original code is MIT licensed; dependencies retain their own licenses. No external business data, geocoding or identity enrichment is used. [Dependency notes](docs/DEPENDENCIES.md).
+This is independent participant code, not official Amazon software.

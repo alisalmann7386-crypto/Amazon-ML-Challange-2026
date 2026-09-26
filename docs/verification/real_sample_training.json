@@ -1,4 +1,5 @@
 {
+  "artifact_status": "historical_hybrid_v1_reduced_catalog_not_final_v2_performance",
   "primary_model": "lightgbm (fixed before holdout)",
   "training_counts": {
     "positive": 4127,
