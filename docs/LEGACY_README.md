@@ -4,7 +4,7 @@
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alisalmann7386-crypto/Amazon-ML-Challange-2026/blob/main/notebooks/Colab_Baseline.ipynb)
 
-**For the 2.2-million-S1 dataset, start with [the Colab notebook](notebooks/Colab_Baseline.ipynb) and [large-data instructions](COLAB.md).** The new disk-backed workflow uses SQLite token BM25 retrieval and incremental logistic training, with 20,000 sampled S1 entities by default and the full S2/S3 search catalog. It reports an independent group holdout score and saves the model to Drive. It needs no GPU.
+**For the 2.2-million-S1 dataset, start with [the Colab notebook](../notebooks/Colab_Baseline.ipynb) and [large-data instructions](../COLAB.md).** The new disk-backed workflow uses SQLite token BM25 retrieval and incremental logistic training, with 20,000 sampled S1 entities by default and the full S2/S3 search catalog. It reports an independent group holdout score and saves the model to Drive. It needs no GPU.
 
 | Entry point | Use |
 | --- | --- |
@@ -53,7 +53,7 @@ The demo is invented data for checking the software. Its scores do not estimate 
 
 ## Run on the challenge data
 
-Place the organizer-provided TSVs under `student_resource/dataset/train/` and `student_resource/dataset/test/`. See the [data guide](student_resource/dataset/README.md).
+Place the organizer-provided TSVs under `student_resource/dataset/train/` and `student_resource/dataset/test/`. See the [data guide](../student_resource/dataset/README.md).
 
 ```bash
 python src/analyze.py --data student_resource/dataset/train
@@ -63,7 +63,7 @@ python src/pipeline.py validate --data student_resource/dataset/test
 python src/package_submission.py --team YOUR_TEAM --test-dir student_resource/dataset/test
 ```
 
-Upload only `output/matching_results.tsv` for leaderboard scoring. The final package includes both output files and reproducible source code. Run the organizer's validator too, if supplied. Review and update the filled `Documentation_template.md` with your team details and actual results before final submission. The supplied [problem statement](student_resource/README.md) and [blank organizer template](student_resource/Documentation_template.md) are preserved unchanged. The organizer validator mentioned in that statement was not among the attached files; this repo includes its own checks via `pipeline.py validate`.
+Upload only `output/matching_results.tsv` for leaderboard scoring. The final package includes both output files and reproducible source code. Run the organizer's validator too, if supplied. Review and update the filled `Documentation_template.md` with your team details and actual results before final submission. The supplied [problem statement](../student_resource/README.md) and [blank organizer template](../student_resource/Documentation_template.md) are preserved unchanged. The organizer validator mentioned in that statement was not among the attached files; this repo includes its own checks via `pipeline.py validate`.
 
 ## Architecture
 
@@ -108,13 +108,13 @@ For each S1 entity, with true set `T`, predicted set `P`, and `TP = |T ∩ P|`:
 
 A true singleton scores 1 for an empty prediction and 0 otherwise. Average across **all S1 records**. The implementation does not substitute micro-F1, pair accuracy, or an average over non-singletons.
 
-The model JSON records the candidate recall, pair count, reduction ratio, selected threshold and OOF threshold-selection score. That score is used for model selection and can be optimistic; reserve an untouched group holdout for final comparison. All target texts are available to unsupervised retrieval during OOF evaluation, matching catalog-retrieval usage. Target labels are not used in indexing. See [validation notes](student_resource/Documentation/VALIDATION.md).
+The model JSON records the candidate recall, pair count, reduction ratio, selected threshold and OOF threshold-selection score. That score is used for model selection and can be optimistic; reserve an untouched group holdout for final comparison. All target texts are available to unsupervised retrieval during OOF evaluation, matching catalog-retrieval usage. Target labels are not used in indexing. See [validation notes](../student_resource/Documentation/VALIDATION.md).
 
 ## Limits and next experiments
 
 This baseline uses **exact sparse retrieval**, not an ANN index. It avoids a full dense S1-by-target matrix, but still performs a sparse search over the target catalog for each query and sorts nonzero scores. Large datasets require profiling and a scalable retrieval backend. Pair features and scores are held in memory during training.
 
-The earlier Project Explanation design—MiniLM retrieval followed by a cross-encoder over a small shortlist—is captured in the [experiment roadmap](student_resource/Documentation/EXPERIMENTS.md). These neural stages are not silently approximated by the baseline or claimed as implemented.
+The earlier Project Explanation design—MiniLM retrieval followed by a cross-encoder over a small shortlist—is captured in the [experiment roadmap](../student_resource/Documentation/EXPERIMENTS.md). These neural stages are not silently approximated by the baseline or claimed as implemented.
 
 ## Reproducibility and fair play
 
