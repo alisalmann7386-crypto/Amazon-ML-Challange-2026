@@ -3,3 +3,8 @@ scipy==1.17.0
 scikit-learn==1.8.0
 joblib==1.5.3
 threadpoolctl==3.6.0
+lightgbm==4.6.0
+rapidfuzz==3.14.3
+anyascii==0.3.3
+sparse-dot-topn==1.1.5
+psutil==7.2.2

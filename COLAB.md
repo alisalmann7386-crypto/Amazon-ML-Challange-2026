@@ -1,76 +1,51 @@
-# Train the large-data baseline in Google Colab
+# Hybrid baseline in Colab
 
-[Open the notebook](https://colab.research.google.com/github/alisalmann7386-crypto/Amazon-ML-Challange-2026/blob/main/notebooks/Colab_Baseline.ipynb)
+[Open Colab_Baseline.ipynb](https://colab.research.google.com/github/alisalmann7386-crypto/Amazon-ML-Challange-2026/blob/main/notebooks/Colab_Baseline.ipynb)
 
-## What this version actually does
+## Drive inputs
 
-`src/scalable.py` uses a disk-backed **SQLite FTS5 token BM25 index** over the full S2/S3 catalog, unions top-20 name and top-20 address results, computes 12 lexical features, and trains **SGD logistic regression** incrementally. This is a separate CPU baseline from the original character TF-IDF `pipeline.py`. It is not MiniLM or a cross-encoder.
+Create `MyDrive/AmazonML2026/input/train/` containing exactly one copy of each training file: Source1, Source2, Source3 and ground truth. TSVs or ZIPs are accepted, including duplicate-download names like `train_source3(1).tsv`; don't include both an archive and its extracted copies. Later place the three test source files in `input/test/`.
 
-The default training experiment samples **20,000 S1 entities** reproducibly, approximately 60% training / 20% calibration / 20% untouched holdout, grouped by shared labeled targets within the sample. Increase `SAMPLE_SIZE` after inspecting candidate recall, runtime and RAM. All S2/S3 records remain searchable regardless of the sampled S1 set. No label-based positive injection is used. This is not a claim that all 2.2 million S1 records train the default model.
+The notebook stores completed work in `MyDrive/AmazonML2026/artifacts/<run_key>/`. Heavy operations run under `/content/er_hybrid/<run_key>/`. Change `SAMPLE_SIZE` and the optional LightGBM device in the configuration cell. The default CPU workflow runs on CPU or GPU runtimes; TF-IDF and BM25 stay on CPU.
 
-The classifier reads compressed feature shards in batches. Calibration/holdout pair scores are collected in memory; raising sample size substantially still increases RAM use. Country labels are unrestricted. Shared targets are grouped; unlabeled near-duplicates can still require stronger grouping.
+## Training cells
 
-## Prepare Google Drive
+1. Clone, or fast-forward an existing clean checkout. Local modifications cause a clear stop; they are not overwritten.
+2. Install the pinned requirements in an isolated virtual environment, then run local smoke tests.
+3. Mount Drive and set paths/config. Restore previously saved artifacts for the exact configuration.
+4. Prepare train TSVs locally. Run streaming EDA (default notebook prefix sample; set `EDA_MAX_ROWS=0` for full statistics).
+5. Normalize to a strict disk catalog, preserving raw Unicode and optional offline transliterations.
+6. Build Unicode/transliterated TF-IDF shards and SQLite BM25 index. Log vocabulary sizes, nnz, memory and build times.
+7. Compare all retrieval methods on training groups; generate descriptive positive/random/hard-negative EDA samples.
+8. Generate cached pair-feature shards; train LightGBM and the SGD reference on identical splits; calibrate and report untouched holdout scores.
+9. Save the model, threshold, feature names, configurations, importance, reports, input hashes and split IDs. Copy completed artifacts to Drive.
 
-Create a folder `MyDrive/AmazonML2026/input/train` containing exactly one copy of each:
+Default S1 sample = 20,000; full target catalog is indexed. For a first runtime feasibility check, reduce S1 `SAMPLE_SIZE` to 2,000. TF-IDF vocabulary is sampled separately (default 100,000 target rows). This still indexes every target row, but does not promise vocabulary coverage for rare scripts/tokens.
 
-- `train_source1.tsv`
-- `train_source2.tsv` or a ZIP containing it
-- `train_source3.tsv` or a ZIP containing it
-- `train_ground_truth.tsv`
+## Test cells
 
-TSVs may be nested in ZIP folders. Windows duplicate names such as `train_source3(1).tsv` are accepted and renamed when copied. Do not place both a ZIP and an extracted copy in the input folder. The notebook deliberately rejects ambiguous duplicates. Later put the three test files in `input/test`.
+Keep `RUN_TEST=False` until test files arrive. Set it to `True` and rerun configuration/test cells when ready:
 
+- Prepare the three test TSVs.
+- Use saved model settings to build fresh test target indexes.
+- Retrieve, score in batches, apply the saved threshold and write both required TSVs.
+- Validate all IDs/coverage/subset rules.
+- Complete methodology/team details, then create `output/submission.zip`.
 
-## Run cells in order
+There is no `test_ground_truth.tsv` and no locally computed true test F0.5. Upload only `matching_results.tsv` for leaderboard scoring.
 
-1. Clone the repo and install pinned dependencies in an isolated Python environment.
-2. Mount Drive, set paths, and run the synthetic smoke tests.
-3. Copy/extract the provided data into Colab's local disk.
-4. Build or restore the full-catalog training index. Completed indices are cached on Drive; incomplete index builds restart.
-5. Train and evaluate. Completed feature shards and results are saved under a configuration-specific Drive run folder. Rerunning training reuses feature shards and restarts the estimator deterministically.
-6. Inspect `metrics.json`, especially **holdout macro F0.5**, candidate recall and singleton accuracy. Calibration F0.5 is used for threshold selection and is not a holdout score.
-7. Once test files are supplied, enable `RUN_TEST`, build the test index, predict both TSVs, validate and package.
+## Resume and storage
 
-No GPU is required. Choose a CPU runtime; a high-RAM runtime may help larger experiments. Index building and millions of query searches may take substantial time and disk space; no full-data runtime has been measured. Token retrieval can miss severe typos/transliterations; BM25 ranking with common terms can also be slow. Measure recall and profile before increasing the sample. A small k is not evidence of adequate recall.
+A configuration-derived run key separates experiments. Catalog/TF-IDF/feature/prediction manifests also verify compatibility and input fingerprints. Reusing an index with changed input data produces an error; select a new `RUN_TAG` for changed datasets. The notebook restores the last completed Drive checkpoint; it does not silently update/reuse different data.
 
-## Command-line reproduction
+Completed feature and inference shards can be reused. LightGBM/SGD training restarts deterministically if interrupted; it does not resume individual boosting iterations. Incomplete catalog imports restart; completed TF-IDF shards resume. `finally` checkpointing runs for ordinary Python errors/manual interrupts, but cannot survive an abrupt runtime termination. Large checkpoint copies need time and Drive space.
 
-Run from the cloned root (or the packaged code directory for prediction). Python 3.11+:
+Full-data CPU duration and peak memory remain unmeasured. The workflow bounds feature-generation memory, but LightGBM's training bins and sampled calibration scores need additional RAM. Never interpret synthetic smoke-test scores as challenge performance. See [README](README.md) and [verification](docs/VERIFICATION.md).
 
-```bash
-python -m pip install -r requirements.txt
-python src/prepare_data.py --input /path/to/input/train --output dataset/train --split train
-python src/scalable.py index --data dataset/train --split train --index artifacts/train.sqlite
-python src/scalable.py train --index artifacts/train.sqlite --work artifacts/run --sample-size 20000 --k 20 --epochs 5 --seed 42
-```
+## Result labels
 
-Inspect `artifacts/run/metrics.json`. The model is `artifacts/run/model.joblib`. `manifest.json` records input SHA256 hashes and the exact sampled split IDs. `holdout_pairs.tsv` contains candidate labels/scores for error analysis; missed true links are reflected in recall/metrics, though they have no scored candidate row. Model and reports are not committed by default.
+- `docs/verification/synthetic_*.json`: tiny software smoke tests only.
+- `docs/verification/real_sample_*.json`: real records with a reduced, label-complete target catalog; not competition performance.
+- Colab artifacts under `artifacts/<run key>/`: full-target results when the complete S2/S3 files are used.
 
-When test data is available:
-
-```bash
-python src/prepare_data.py --input /path/to/input/test --output dataset/test --split test
-python src/scalable.py index --data dataset/test --split test --index artifacts/test.sqlite
-python src/scalable.py predict --index artifacts/test.sqlite --model artifacts/run/model.joblib --output output
-python src/scalable.py validate --index artifacts/test.sqlite --output output
-python src/package_submission.py --team YOUR_TEAM --index artifacts/test.sqlite --model artifacts/run/model.joblib --output output
-```
-
-The package includes the trained model at `code/business_entity_resolution/artifacts/model.joblib`. **Inside the extracted package**, regenerate predictions with:
-
-```bash
-python src/scalable.py index --data /path/to/dataset/test --split test --index artifacts/test.sqlite
-python src/scalable.py predict --index artifacts/test.sqlite --model artifacts/model.joblib --output output
-```
-
-To retrain from scratch, use the training command above with the same sample size, k, epochs and seed saved in the model artifact. The default notebook uses the listed settings; record custom values in the methodology. Update team details and real metrics in `Documentation_template.md` before packaging. Only upload `matching_results.tsv` to the live leaderboard; retain both files for the final ZIP.
-
-## Checkpoints and integrity
-
-- Completed indices are reused only when SHA256 input fingerprints match. Choose a new path for different data.
-- Feature caches reject a changed sample, seed, k, source hash or implementation version. Use a new work folder for changed settings.
-- Predictions stream one S1 at a time and are staged under temporary names. Inference restarts after interruption; it does not resume mid-output.
-- The disk-based validator checks coverage, duplicates, target identity and match-subset consistency without loading the entire dataset into Python.
-- Only load trusted `joblib` artifacts.
-- Full-data accuracy and Colab runtime behavior remain unverified until you run the notebook with all four training files. Local tests use synthetic fixtures.
+The full-run notebook prepares four training files, runs EDA, builds TF-IDF and BM25, compares retrieval, trains/calibrates/evaluates, and checkpoints to Drive. Use `SAMPLE_SIZE=20000` for the documented baseline; the target catalog remains complete.

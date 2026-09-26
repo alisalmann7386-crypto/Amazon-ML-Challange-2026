@@ -28,7 +28,7 @@ def log(message):
 
 def stream(path, fields):
     with open(path, encoding='utf-8-sig', newline='') as f:
-        reader = csv.DictReader(f, delimiter='\t')
+        reader = csv.DictReader(f, delimiter='\t', strict=True)
         if reader.fieldnames != fields:
             raise ValueError(f'{path}: expected {fields}, got {reader.fieldnames}')
         for n, row in enumerate(reader, 2):

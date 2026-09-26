@@ -8,87 +8,61 @@
 
 ## 1. Executive Summary
 
-The Colab baseline resolves each Source 1 business against Sources 2 and 3 using a disk-backed token BM25 candidate index and an incremental logistic pair classifier. The original character TF-IDF workflow remains available for small experiments. A separate grouped calibration split selects a precision-oriented macro F0.5 threshold, while preserving multi-match and no-match outcomes. Software has been tested on synthetic fixtures; official-data performance has not yet been measured.
-
----
+The baseline combines sparse character TF-IDF and SQLite BM25 retrieval over normalized Unicode and optional offline transliterated fields. A LightGBM pair classifier uses lexical, vector, structured and retrieval-channel features; a threshold selected only on calibration produces zero/one/many matches per S1. SGD is a reference trained on identical pairs and splits. The repository includes a sampled-real engineering run; it is not a full-catalog competition score.
 
 ## 2. Methodology
 
 ### 2.1 Problem Analysis
 
-The supplied problem statement anticipates abbreviated names, inconsistent legal suffixes, partial addresses, transliteration and missing components. Training covers US and India; test also contains France, so country remains an open-set string. These are requirements from the brief, not findings from an EDA run on the real dataset. `src/analyze.py` will report field missingness, country distribution, repeated normalized names and ground-truth match cardinality when data is supplied.
+Supplied data may contain abbreviations, script differences, typos and incomplete addresses. All four real training files were read successfully: 2,206,821 S1 rows, 5,034,616 S2 rows, 5,285,603 S3 rows and 2,206,821 ground-truth rows. Exact full-corpus EDA is versioned at `docs/verification/real_full_eda.json`; the notebook can reproduce it in Colab.
 
 ### 2.2 Solution Strategy
 
-**Approach Type:** Blocking + Classifier  
-**Core Innovation:** A reproducible, auditable baseline combining independent name and address retrieval with group-aware threshold selection and exact candidate-set reporting; no novel algorithm is claimed.
+**Approach Type:** Hybrid Blocking + Classical Classifier  
+**Core Innovation:** Complementary Unicode and transliterated candidate channels, auditable union metadata, and grouped calibration/holdout validation. No novel algorithm or accuracy advantage is claimed.
 
-Read strict UTF-8 TSV schemas, preserve string IDs, normalize text, retrieve candidates, compute 12 pair features, score with logistic regression, and threshold each pair independently. No forced top-1 match, one-to-one assignment or country whitelist is imposed. Normalization uses Unicode decomposition, accent removal, case folding, ampersand expansion, punctuation removal and whitespace normalization. Missing fields remain empty.
-
----
+Strict TSV ingestion preserves string IDs and raw fields; a normalized disk catalog retains NFKC/casefold text and combining marks. Conservative legal-suffix/address maps are configurable. Suffix stripping affects only a secondary core name. `St → Street` is disabled by default because of Saint/Street ambiguity. AnyAscii creates an additional offline representation; it does not translate or look up business identities.
 
 ## 3. Candidate Generation (Blocking)
 
-- **Blocking keys used:** SQLite FTS5 token BM25 search over normalized names and addresses in the complete combined S2/S3 catalog. Up to 16 unique tokens per field form an OR query.
-- **Candidate pairs generated:** Not yet measured on official data. The training report records actual pair count and reduction ratio.
-- **How you ensured true matches were not lost:** No guarantee is claimed. Union up to 20 BM25-ranked token matches per field (at most 40 unique targets per S1), then measure retrieved true links / all true links. Increase k or add complementary retrieval only after recall and cost analysis. Ground-truth positives are not injected into candidate sets.
+- **Blocking keys used:** Unicode/transliterated names and addresses, character TF-IDF cosine and field-specific BM25 token queries.
+- **Candidate pairs generated:** In the sampled-real run, hybrid+transliteration produced 62.41 candidates per training query on average. The configured default is top-20 per active channel, up to eight channels before deduplication.
+- **How true matches are protected:** Union complementary channels and measure recall; no guarantee is claimed. Never inject ground-truth positives into classifier candidates. Report missing links, macro coverage, Recall@5/10/20/30/50, candidate-count quantiles and reduction ratio.
 
-The completed disk index is reused after input SHA256 verification. Retrieval uses a token inverted index, not ANN search; full-scale time and memory must be profiled. Candidate IDs are sorted deterministically. `candidate_pairs.tsv` is exactly the set the matching model scores.
-
----
+TF-IDF uses 3–5 `char_wb` n-grams, float32, sublinear TF and L2 normalization by default. A seeded target sample (up to 100,000 rows) fits the vocabulary; all supplied target rows are transformed into persisted CSR shards. Exact sparse top-N scans every shard without a dense all-pairs matrix. BM25 uses SQLite FTS5 disk indexes. Candidate metadata preserves native channel scores and ranks. Recall@K comparisons use reciprocal-rank fusion; classifier inference scores the entire configured union.
 
 ## 4. Matching Model
 
-**Features used:**
-- Name features: sequence similarity, token Jaccard, nonempty exact equality.
-- Address features: sequence similarity, token Jaccard, nonempty exact equality, numeric-token Jaccard and numeric conflict.
-- Other: country agreement, country disagreement, name missingness and address missingness.
+**Features used:** 91 fixed-order features spanning Unicode/transliterated names and addresses: exact/core equality; Levenshtein, Jaro and Jaro-Winkler; Jaccard/overlap/containment; token-set/sort; prefix and length ratios; character/word TF-IDF cosine; numeric intersections/conflicts; house/postal heuristics; rare-token overlap; country/script agreements; retrieval scores/flags and interaction indicators.
 
-**Model type:** Incremental `SGDClassifier(loss="log_loss", alpha=1e-4, average=True, random_state=42)`, five epochs by default. All 12 features are already in [0,1]; this workflow does not fit a scaler. No pretrained neural model is used.  
-**Threshold selection method:** Maximize macro F0.5 over a fixed threshold grid using probabilities on a dedicated grouped calibration split; break score ties in favor of the higher threshold.
+**Model type:** LightGBM binary classifier, CPU by default; optional GPU attempt falls back to CPU. SGD logistic regression with a train-only scaler is a separately calibrated reference. All retrieved positives and negatives are retained; top-5-channel nonmatches are counted as hard negatives. EDA random negatives are not inserted into training.
 
-By default, deterministically sample 20,000 S1 entities and split approximately 60/20/20 into training, calibration and holdout groups. All candidates are retrieved against the complete S2/S3 catalog. S1 entities sharing a labeled target within the sample remain in the same group. Train only on the training split, choose the threshold only on calibration, and report the untouched holdout separately. Entities with no candidates remain in the macro metric. Feature shards are cached with a manifest containing input hashes and split IDs. Full-data training accuracy is not claimed.
+**Threshold selection:** Exact macro F0.5 on a calibration-only configurable threshold grid, including no-candidate records and singletons. Ties select the higher threshold.
 
----
+Default S1 sample: 20,000, deterministically selected. Approximately 60/20/20 train/calibration/holdout. Full-label-graph connected components keep linked S1 entities together, even via unsampled intermediaries. All target texts are available for unsupervised indexing; calibration and holdout labels do not fit models. LightGBM is designated primary before evaluating holdout.
 
 ## 5. Results & Error Analysis
 
-- **F_0.5 Score (macro):** Not measured on official data. No leaderboard result is claimed.
-- **Common false positives (wrong merges):** To measure on real validation data. Planned slices: chains with similar names at different locations, address-number conflicts and singleton false merges.
-- **Common false negatives (missed matches):** To measure on real validation data. Planned slices: candidate retrieval misses, transliteration, short names, missing addresses and unseen-country conventions.
-
-Synthetic automated tests cover metric/singleton behavior, Unicode and list validation, empty retrieval, shared-target grouping, and an end-to-end synthetic run with invalid-output rejection. A packaged synthetic run regenerated both output files byte-for-byte. These checks establish software behavior, not challenge accuracy.
-
----
+- **Full-catalog/leaderboard macro F0.5:** Not measured. No public/private leaderboard result is claimed.
+- **Sampled-real engineering result:** 2,000 real S1 rows and a label-complete 206,896-target catalog, grouped 1,200/400/400. Hybrid+transliteration candidate micro recall was 0.9928 on training queries. LightGBM selected threshold 0.580 on calibration (macro F0.5 0.9793) and achieved holdout macro F0.5 0.9839, precision 0.9879, recall 0.9689 and singleton accuracy 0.9630. SGD holdout macro F0.5 was 0.9720. These are not full-catalog competition scores.
+- **Synthetic verification only:** 12 S1 records, 24 targets; split 7/2/3. LightGBM holdout macro F0.5 = 0.5714285714, SGD = 1.0. LightGBM made two false-positive links and no false negatives in this tiny holdout. This fixture verifies execution and must not be presented as challenge accuracy.
+- **Synthetic retrieval:** A/B/C/D training-group candidate micro recall was 1.0 for this easy fixture. Average candidates were about 3.57 / 3.00 / 4.71 / 4.71 at the smoke-test k=3. No transliteration benefit is inferred from this aggregate; a separate cross-script unit test verifies retrieval functionality.
+- **Error exports:** False positives/negatives, retrieval misses, singleton false merges, numeric conflicts, high-name/low-address, low-name/high-address, cross-script failures and transliteration-only retrieval outcomes.
 
 ## 6. Conclusion
 
-The repository provides an executable offline baseline and an auditable submission workflow for zero/one/many entity matching. Candidate recall, singleton precision and independent group holdout quality are the next measurements once official data is available. MiniLM, ANN, boosting and cross-encoder stages remain planned experiments, not implemented or benchmarked components.
-
----
+The repository implements and tests the requested multilingual classical baseline with independent calibration/holdout evaluation and reproducible submission outputs. The sampled-real experiment supports using the hybrid and transliteration union for the next full-target Colab run, while full-catalog retrieval recall, country/script transfer and resource use remain to be measured. Neural retrieval and cross-encoders are not part of this baseline.
 
 ## Appendix
 
 ### A. Code Artefacts
 
-The final ZIP contains source under `code/business_entity_resolution/src/`, pinned `requirements.txt` and a reproduction `README.md`. `core.py` owns I/O, retrieval, features, metric and output checks; `pipeline.py` provides the original small-data TF-IDF path; `scalable.py` provides disk indexing, batched training, holdout evaluation and streaming prediction; `prepare_data.py` copies TSVs from folders/ZIPs; `analyze.py` reports data quality; `make_demo.py` generates synthetic fixtures; `package_submission.py` builds the required archive layout.
+All source is under `src/`; full configurations and trained artifacts are packaged under `code/business_entity_resolution/`. The packaged README contains reproduction commands. Primary entry points: `eda.py`, `io_utils.py`, `tfidf_retriever.py`, `bm25_retriever.py`, `hybrid_retriever.py`, `train.py`, `inference.py`, `validate_submission.py`, and `package_submission.py`.
 
-From the packaged code directory:
-
-```bash
-python -m pip install -r requirements.txt
-python src/scalable.py index --data /path/to/dataset/train --split train --index artifacts/train.sqlite
-python src/scalable.py train --index artifacts/train.sqlite --work artifacts/run --sample-size 20000 --k 20 --epochs 5 --seed 42
-python src/scalable.py index --data /path/to/dataset/test --split test --index artifacts/test.sqlite
-python src/scalable.py predict --index artifacts/test.sqlite --model artifacts/run/model.joblib --output output
-```
-
-The dataset is supplied separately by the organizers. The baseline performs no external entity lookup, geocoding or enrichment. Original code/model are MIT licensed; third-party dependencies retain their licenses. Any optional pretrained model requires a separate MIT/Apache-2.0 and parameter-limit check.
+Run the README commands to generate `output/candidate_pairs.tsv`, `output/matching_results.tsv` and `output/submission.zip`. Test inference rebuilds indexes over test S2/S3 with saved settings. It never queries the train target catalog or expects test labels. Candidate output equals the actual classifier-scored union. The extracted hybrid package was verified to rebuild fresh synthetic test indices and reproduce both TSVs byte-for-byte.
 
 ### B. Additional Results
 
-Official data results, runtime, peak memory, hardware, source commit, dataset version and leaderboard scores: not yet recorded. Fill these in from the selected real-data run before submitting. Current reproduction defaults are k=20 per field, sample-size=20000, epochs=5 and seed=42; document any changed configuration.
+Machine-readable sampled-real retrieval/training reports and exact full-corpus EDA are in `docs/verification/`; portable sampled-real model artifacts are in `models/real_sample/`. Record the full-target Colab run key, input hashes, runtime, hardware, peak memory and leaderboard score before actual submission, and complete the team details above.
 
----
-
-**Note:** Filled using the user-supplied organizer template. The original blank template and problem README are preserved under `student_resource/`.
+No external entity lookup, geocoding, translation API or business enrichment is used. Original code is MIT licensed; third-party libraries retain upstream licenses. AnyAscii is offline transliteration; the model contains no pretrained neural weights.

@@ -10,6 +10,8 @@ demo_data/
 *.joblib
 *.pkl
 *.zip
+!models/real_sample/model.joblib
+!models/real_sample/reference.joblib
 student_resource/dataset/train/
 student_resource/dataset/test/
 
