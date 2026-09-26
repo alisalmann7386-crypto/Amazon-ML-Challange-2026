@@ -91,6 +91,8 @@ python src/train.py --index artifacts/index_train --config configs/baseline.json
 
 ## How the blocker controls cost
 
+For current pilot limitations and exact Drive output locations, read [COLAB.md](COLAB.md). The notebook now blocks model training when selected-K recall is missing or below the configured floor. This is a recall safety check, not a guarantee that a full run fits Colab memory or runtime. No new real-data score is claimed by software tests.
+
 Each TF-IDF/BM25 channel retrieves its best results. The candidates are merged by target ID and ranked using reciprocal-rank fusion. Training and inference then keep only the best `blocking.final_k` unique targets; the default is 20.
 
 The retrieval report measures both sides of cost:

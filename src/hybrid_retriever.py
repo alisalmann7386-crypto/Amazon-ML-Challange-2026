@@ -1,4 +1,4 @@
-"""Union all channels; reciprocal-rank fusion is used only for Recall@K reporting."""
+"""Merge channels with reciprocal-rank fusion and enforce the final candidate cap."""
 import time
 from io_utils import connect,get_rows
 from tfidf_retriever import CharTfidfRetriever

@@ -91,7 +91,8 @@ def audit(data, split, output):
             lines['train_ground_truth.tsv'] = physical_lines(path)
             counts['train_ground_truth.tsv'] = truth['rows']
 
-        failures = sum(duplicates.values()) + truth['unknown_source1'] + truth['missing_source1_labels'] + truth['unknown_targets']
+        truth['duplicate_source1_labels'] = (truth['rows'] - db.execute('SELECT count(*) FROM truth_qids').fetchone()[0]) if split == 'train' else 0
+        failures = sum(duplicates.values()) + truth['unknown_source1'] + truth['missing_source1_labels'] + truth['unknown_targets'] + truth['duplicate_source1_labels']
         result = {
             'status': 'fail' if failures else ('pass_with_repairs' if any(repairs.values()) else 'pass'),
             'split': split,

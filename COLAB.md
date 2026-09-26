@@ -39,13 +39,13 @@ The model does not require a GPU. TF-IDF and BM25 remain CPU operations. A GPU c
 
 1. Mounts Drive and clones or safely fast-forwards the repository.
 2. Installs pinned packages and runs the test suite.
-3. Copies the TSV bytes to local Colab storage and writes a copy manifest.
+3. Copies the TSV bytes to local Colab storage and writes a copy manifest. Reruns verify existing copies against Drive; interrupted copies resume without overwriting different data.
 4. Runs `data_integrity.py` before EDA. Stop here if it reports unknown label IDs.
 5. Runs EDA on the verified data.
-6. Normalizes Unicode text and creates optional transliterations.
+6. If test files are available, creates the exact-match baseline before ML. Otherwise this optional leaderboard step is deferred. Normalizes Unicode text and creates optional transliterations.
 7. Builds the full Source-2/Source-3 TF-IDF and BM25 indexes.
 8. Runs the grouped retrieval pilot. K=20 is the default; K=50 is diagnostic only.
-9. Generates bounded feature shards and trains LightGBM plus SGD.
+9. Stops if selected-K candidate recall is missing or below the configured floor (default 93%). Otherwise generates bounded feature shards and trains LightGBM plus SGD.
 10. Selects thresholds on calibration and evaluates the untouched grouped holdout.
 11. Saves model files and checkpoints artifacts to Drive.
 
@@ -85,6 +85,25 @@ Set `RUN_TEST=True`. The notebook builds fresh test indexes, loads the saved mod
 Before the hybrid submission, run the notebook's exact-baseline cell. It produces a no-ML `matching_results.tsv` using normalized business name plus country and validates the complete submission path.
 
 ## 7. Result labels
+
+### Current pilot limitations
+
+`SAMPLE_SIZE=20000` is the total sampled S1 set, split into train/calibration/holdout. Retrieval diagnostics use only its training groups, so this is **not a separate stratified 20,000-query pilot**. The current report computes K=20 and K=50 diagnostics together and retains channel comparisons; it does not implement the PDF's conditional K=50 execution. It does not yet supply a complete peak-RAM/disk/feature-throughput cost gate or automatic targeted rescue. Review these limitations before a full-data run; passing 93% recall alone is not a compute-budget approval.
+
+Global-cap metrics use the same per-channel budgets as training. With default per-channel top_k=20, K=50 means retaining up to 50 from that union, not searching 50 neighbors per channel.
+
+### Where to find outputs
+
+Under `MyDrive/AmazonML2026/artifacts/<run_key>/`:
+
+- `data_integrity.json`: row counts, hashes, repairs and missing-label checks.
+- `retrieval_comparison/metrics.json`: retrieval and global-cap diagnostics.
+- `run/metrics.json`: calibration and holdout model results.
+- `final_model/model.joblib` and `final_model/threshold.json`: trained artifacts.
+- `output_exact/matching_results.tsv`: optional exact baseline.
+- `output_hybrid/matching_results.tsv` and `output_hybrid/submission.zip`: final test outputs.
+
+If integrity fails, stop and inspect its report. Do not delete unknown labels to make validation pass. A new notebook copy does not remove your old notebook or Drive checkpoints.
 
 - Synthetic metrics: software smoke tests only.
 - Sampled-real metrics: engineering checks, not competition performance.

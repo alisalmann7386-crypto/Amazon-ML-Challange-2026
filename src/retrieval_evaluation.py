@@ -29,7 +29,8 @@ def compare(index,cfg,output,queries=None):
                     s['true']+=len(actual);s['found']+=found;s['counts'].append(len(ids))
                     if actual:s['coverage']+=found/len(actual);s['non_singletons']+=1
                     for k in s['at']:s['at'][k]+=len(actual&set(ranking[:k]))
-            full_ranking=ranked(cs,CHANNELS)
+            # Pilot must use the same channel budgets as training/inference.
+            full_ranking=ranked(base,CHANNELS)
             for k,pilot in pilots.items():
                 selected=set(full_ranking[:k]);found=len(actual&selected)
                 pilot['true']+=len(actual);pilot['found']+=found;pilot['counts'].append(min(len(full_ranking),k))

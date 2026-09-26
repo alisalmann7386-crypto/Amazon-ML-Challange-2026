@@ -51,7 +51,21 @@ def prepare(source,destination,split):
         path,member=found[0];out=destination/name
         if member is None and path.resolve()==out.resolve():
             manifest['files'][name]=file_stats(out);continue
-        if out.exists(): raise ValueError(f'{out} already exists; use a new destination or reuse existing prepared data')
+        if out.exists():
+            if member is None:
+                original = file_stats(path)
+            else:
+                digest = hashlib.sha256(); size = 0
+                with zipfile.ZipFile(path) as z, z.open(member) as stream:
+                    for block in iter(lambda: stream.read(8*1024*1024), b''):
+                        digest.update(block); size += len(block)
+                original = {'sha256': digest.hexdigest(), 'bytes': size}
+            existing = file_stats(out)
+            if any(existing[key] != original[key] for key in ('sha256', 'bytes')):
+                raise ValueError(f'{out}: prepared data differs from input. Use a new RUN_TAG/output directory; nothing was overwritten.')
+            manifest['files'][name] = existing
+            print(f'Verified existing prepared file: {name}', flush=True)
+            continue
         temp=out.with_suffix('.tsv.copying')
         try:
             with temp.open('wb') as target:
