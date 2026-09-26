@@ -141,4 +141,4 @@ Postal/house-number and script labels are heuristics, not address validation. Ra
 
 Original `core.py`, `pipeline.py`, `scalable.py`, `analyze.py`, ZIP preparation, tests and package modes remain available. [Audit](docs/AUDIT.md), [legacy README](docs/LEGACY_README.md), [legacy Colab guide](docs/LEGACY_COLAB.md). Legacy document links assume their original root location.
 
-The workspace organization was inspired by [uditjain100/Amazon-ML-Challange-2025](https://github.com/uditjain100/Amazon-ML-Challange-2025). This is independent participant code, not official Amazon software. Original code is MIT licensed; dependencies retain their own licenses. No external business data, geocoding or identity enrichment is used. [Dependency notes](docs/DEPENDENCIES.md).
+This is independent participant code, not official Amazon software. Original code is MIT licensed; dependencies retain their own licenses. No external business data, geocoding or identity enrichment is used. [Dependency notes](docs/DEPENDENCIES.md).
